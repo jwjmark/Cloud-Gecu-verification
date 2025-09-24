@@ -1,5 +1,5 @@
 {
-    "address": "tcp://192.168.235.148:1883",
+    "address": "tcp://192.168.235.170:1883",
     "qos": 0,
     "clientid":"vcs",
     "topic":"innetwork/gecu2vcs",
