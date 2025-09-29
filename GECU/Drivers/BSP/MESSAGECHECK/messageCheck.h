@@ -1,0 +1,44 @@
+#ifndef messageCheck_h
+#define messageCheck_h
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include "./SM4/sm4.h"
+#include "./SHA256/sha256.h"
+#include "./CJSON/cJSON.h"  
+#include "./BYTE2STRING/byte2string.h"
+
+
+#define MSG_CHECK_OK 0
+#define MSG_CHECK_ERROR_JSONTYPE 1
+#define MSG_CHECK_ERROR_JSONKEY 2
+#define MSG_CHECK_ERROR_DIGEST 3
+#define MSG_CHECK_ERROR_TIMEVAL 4
+#define MSG_CHECK_ERROR_KEY 5
+
+
+
+void print_errorinfo(int errornum);
+int check_json_keys(cJSON *json, char *required_keys[], int num_required_keys);
+int CheckMessage_ev2cs_auth (void * jsondata);
+
+int CheckMessage_cs2es_auth (void * jsondata);
+
+int CheckMessage_es2cs_auth (void * jsondata);
+
+CJSON_PUBLIC(cJSON *) cJSON_Parse_es2cs(const char *msg);
+
+
+
+
+
+
+
+
+
+
+
+
+#endif
