@@ -18,7 +18,6 @@
 // 配置文件信息
 static cJSON *configjson;
 
-const char PQGE[] = "aabbccddeeff0011"; // 必须与GECU中的值一致
 int ECU_flag = 0; // 标志位，标志是否已经认证通过
 
 char* ADDRESS = NULL;
@@ -27,6 +26,10 @@ char* TOPIC = NULL;
 int QOS = 0;
 
 int receiveflag = 0;
+char qcg_random[17];
+cJSON *QGC = NULL;
+char qgc[256]; // Allocate sufficient space for the string
+
 // #define QOS         2
 #define TIMEOUT     10000L
 
@@ -159,13 +162,16 @@ void AuthMsg_callback1_GECU2VCS(char* msg){
     // 生成3s的延时
     sleep(5); 
 
-    // 生成随机数QCG
+     // 动态随机生成QCG
+    
+    generate_random_string(qcg_random, 16);
+    printf("Generated QCG: %s\n", qcg_random);
+
     unsigned char MixM_inbuff2[512] = { 0 };
     unsigned char MixM_outbuff2[32] ;
 
-    cJSON *QCG = cJSON_GetObjectItem(configjson, "QCG");//这里先进行预置，后期改为随机数
     strcat((char*)MixM_inbuff2, PGID_r->valuestring);
-    strcat((char*)MixM_inbuff2, QCG->valuestring);
+    strcat((char*)MixM_inbuff2, qcg_random);
     sha256(MixM_inbuff2,strlen((char*)MixM_inbuff2),MixM_outbuff2);
 
     char MAC_PQ[65] = {0};
@@ -176,7 +182,7 @@ void AuthMsg_callback1_GECU2VCS(char* msg){
     cJSON *root = NULL;
     root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "PGID", PGID_r->valuestring);
-    cJSON_AddStringToObject(root, "QCG", QCG->valuestring);
+    cJSON_AddStringToObject(root, "QCG", qcg_random);
     cJSON_AddStringToObject(root, "MAC", MAC_PQ);
     /* declarations */
     char *out_jsonStr = NULL;
@@ -222,31 +228,44 @@ void AuthMsg_callback2_GECU2VCS(char* msg){
 
     // 检查格式、验证签名
     int rt = CheckMessage2_gecu2vcs_auth(json);
+
+    
     if(rt != MSG_CHECK_OK) {
         printf("error in CheckMessage2_gecu2vcs_auth:\n");
         print_errorinfo(rt);
         return ;
     }
 
-    cJSON *QGC = cJSON_GetObjectItem(json, "QGC");
+    
+
+    QGC = cJSON_GetObjectItem(json, "QGC");
+    strcpy(qgc, QGC->valuestring); // Copy the string into the allocated array
+    printf("QGC from message: %s\n", qgc);
     cJSON *M_1 = cJSON_GetObjectItem(json, "M1");
-    cJSON *QCG = cJSON_GetObjectItem(configjson, "QCG");
+
     cJSON *PW = cJSON_GetObjectItem(configjson, "PW");
+
+    
+
     unsigned char hash_inbuf[1024] = { 0 };
     unsigned char hash_outbuff[32] = { 0 };
     char hash[32]= {0};
-    strcat((char*)hash_inbuf, QCG->valuestring);
+
+    strcat((char*)hash_inbuf, qcg_random);
     strcat((char*)hash_inbuf, QGC->valuestring);
     strcat((char*)hash_inbuf, PW->valuestring);
     
     sha256(hash_inbuf,strlen(hash_inbuf),hash_outbuff);
     ByteToString(hash_outbuff,hash,32);
 
+    
+
     cJSON *GID = cJSON_GetObjectItem(configjson, "GID");
     char M1[128];
     uint64_t gid_num = hex_str_to_uint64(GID->valuestring);
     uint64_t hash_num = hex_str_to_uint64(hash);
     uint64_t xor_value = gid_num ^ hash_num;
+    
     snprintf(M1, sizeof(M1), "%016" PRIX64, xor_value);
 
     printf("M1: %s\n", M1);
@@ -268,7 +287,7 @@ void AuthMsg_callback2_GECU2VCS(char* msg){
     char hash2[32]= {0};
     unsigned char hash_inbuf2[1024] = { 0 };
     unsigned char hash_outbuff2[32] = { 0 };
-    strcat((char*)hash_inbuf2, QCG->valuestring);
+    strcat((char*)hash_inbuf2, qcg_random);
     strcat((char*)hash_inbuf2, QGC->valuestring);
     strcat((char*)hash_inbuf2, GID->valuestring);
     sha256(hash_inbuf2,strlen(hash_inbuf2),hash_outbuff2);
@@ -326,7 +345,7 @@ void AuthMsg_callback2_GECU2VCS(char* msg){
 }
 
 // 云端认证网关第3条消息(认证ECU身份)
-// 接收{PGID, EID_⊕PQCG, C1, C2, MAC}，C1 = H(EIDi) ⊕ PQGE
+// 接收{PGID, EID_⊕PQCG, C1, C2, MAC}，C1 = H(EIDi) ⊕ QGC
 // 计算 H(QCG || QGC || PW)，与 M1⊕GID 比对，确认GECU身份。
 // 生成应答消息 M2 = H(QCG || QGC || GID) ⊕ PQCG，发送 {PGID, M2, MAC} 至GECU。
 void AuthMsg_callback3_GECU2VCS(char* msg){
@@ -363,15 +382,19 @@ void AuthMsg_callback3_GECU2VCS(char* msg){
     snprintf(heidi, sizeof(heidi), "%016" PRIX64, heidi_num);
     printf("  Recovered H(EIDi): %s\n", heidi);
 
-    // 3. 验证 C1 = H(EIDi) ⊕ PQGE
-    char calculated_pqge[17];
+    // 3. 验证 C1 = H(EIDi) ⊕ QGC
+    char calculated_qgc[17];
     uint64_t c1_num = hex_str_to_uint64(C1->valuestring);
+    printf("  Received C1: %s\n", C1->valuestring);
     uint64_t xor_value_c1 = c1_num ^ heidi_num;
-    snprintf(calculated_pqge, sizeof(calculated_pqge), "%016" PRIX64, xor_value_c1);
+    printf("  Calculated qgc (from C1 ⊕ H(EIDi)): %016" PRIX64 "\n", xor_value_c1);
+    snprintf(calculated_qgc, sizeof(calculated_qgc), "%016" PRIX64, xor_value_c1);
+  
 
-    printf("  Calculated PQGE: %s\n", calculated_pqge);
-    printf("  Expected PQGE:   %s\n", PQGE);
-    if (strcasecmp(calculated_pqge, PQGE) != 0)
+
+    printf("  Calculated QGC: %s\n", calculated_qgc);
+    printf("  Expected QGC:   %s\n", qgc);
+    if (strcasecmp(calculated_qgc, qgc) != 0)
     {
         printf("  C1 verification FAILED. ECU is NOT authentic.\n");
         // ... 可以选择发送失败消息 ...
@@ -537,6 +560,8 @@ void connlost(void *context, char *cause) {
 
 int main(int argc, char* argv[]) {
 
+    // 初始化随机数种子
+    srand(time(NULL));
     read_json_file("VCSconfig.json");    
     
 

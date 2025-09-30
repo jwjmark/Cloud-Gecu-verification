@@ -7,7 +7,6 @@
     "GID":"gecu001",
     "PW":"0123456789abcdef",
     "PQCG":"fedcba9876543210",
-    "QCG":"0123456789abcdef",
     "cs001key":"1234567890abcdef",
 
     
@@ -16,7 +15,8 @@
     "ECUID_TABLE": [
         "ecu001",
         "ecu002",
-        "ecu003"
+        "ecu003",
+        "ecu004"
     ],
 
 
