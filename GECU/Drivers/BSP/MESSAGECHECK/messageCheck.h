@@ -18,6 +18,19 @@
 #define MSG_CHECK_ERROR_TIMEVAL 4
 #define MSG_CHECK_ERROR_KEY 5
 
+// --- 状态机定义 ---
+typedef enum {
+    STATE_GECU_VCS_HANDSHAKE,
+    STATE_GECU_VCS_AUTH_SUCCESS,
+    STATE_ECU_AUTH_START,
+    STATE_ECU_AUTH_PENDING
+} AuthState;
+
+// --- 声明全局变量 ---
+extern volatile AuthState g_auth_state;
+extern int current_ecu_index;
+
+
 
 
 void print_errorinfo(int errornum);
@@ -29,12 +42,6 @@ int CheckMessage_cs2es_auth (void * jsondata);
 int CheckMessage_es2cs_auth (void * jsondata);
 
 CJSON_PUBLIC(cJSON *) cJSON_Parse_es2cs(const char *msg);
-
-
-
-
-
-
 
 
 

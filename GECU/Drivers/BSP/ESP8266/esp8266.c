@@ -28,7 +28,7 @@
 #define MQTT_CLIENT_ID   "client1"   
 #define MQTT_USER_NAME   "GECU"
 #define MQTT_PASSWD      "123456"
-#define BROKER_ASDDRESS  "192.168.235.170"
+#define BROKER_ASDDRESS  "192.168.133.170"
 #define SUB_TOPIC        "innetwork/vcs2gecu"
 #define PUB_TOPIC        "innetwork/gecu2vcs"
 //#define JSON_FORMAT      "{\\\"msg\\\":\\\"hello\\\"\\\,\\\"mvg\\\":\\\"hi\\\"\\\,\\\"m1g\\\":\\\"AKDKSDAKJAJDSIKAJDIAJD\\\"\\\,\\\"m2g\\\":\\\"123\\\"\\\,\\\"m3\\\":\\\"XAJHNDJWHDNJW\\\"}"
@@ -52,9 +52,15 @@ extern unsigned char receive_buf[];   //串口3接收缓存数组
 extern uint16_t receive_count;	      //串口3接收数据计数器
 extern uint16_t receive_finish;	    //串口3接收结束标志位 
 
+extern const char* ecu_ids;
+extern unsigned char PQGE;
+extern volatile AuthState g_auth_state;
+extern int current_ecu_index;
+
 char PGID[65] = {0};  // 定义并初始化为空字符串
 char *QCG = 0 ;
 char *QGC = 0;
+cJSON *json_es2cs;
 
 /*
 *************************************
@@ -231,15 +237,12 @@ uint8_t esp8266_send_msg(void)
   * @retval         返回0接收数据正常,返回1接收数据异常或无数据
   */
 char msg1_body[512]; 
-char *out_jsonStr = NULL;
 
 uint8_t esp8266_receive_msg(void)	
 {
     
 	uint8_t retval =0;	
 
-    
-    
 	if(strstr((const char*)receive_buf,"+MQTTSUBRECV:") != NULL)
 	{
         printf("\%s\n",receive_buf);
@@ -260,199 +263,14 @@ uint8_t esp8266_receive_msg(void)
         strncpy(msg1_body, msg_body_start, msg_len);
         msg1_body[msg_len] = '\0'; // 确保字符串以空字符终止
         
-		cJSON *json_es2cs = cJSON_Parse(msg1_body);  //******最后记得把es2cs改成vcs2gecu
+		json_es2cs = cJSON_Parse(msg1_body);  //******最后记得把es2cs改成vcs2gecu
         
 		if (!json_es2cs)
 		{
 			printf("Error before: [%s]\n", cJSON_GetErrorPtr());
             return 1;
 		}
-        if(esp_rxflag == 0)
-        {
-        // 检查消息格式是否正确
-            int rt = CheckMessage_es2cs_auth(json_es2cs);
-            if ( rt!= MSG_CHECK_OK) 
-            {
-                printf("Error CheckMessage_vcs2gecu_auth: \n");
-                print_errorinfo(rt);
-                return 1;
-            }
-            else if ( rt == MSG_CHECK_OK) 
-            {
-                retval = 0;
-            }
-            memset(receive_buf,0x00,receive_count);
-            receive_count = 0;
-            
-            cJSON *qcg = cJSON_GetObjectItem(json_es2cs, "QCG");
-//            extern char *QCG ;
-//            extern char *QGC;
-            
-            char *QCG = qcg->valuestring;
-            char *QGC = "0123456789abcdef";//这里生成量子随机数QGC，之后取代这部分
-            
-            //生成哈希组合
-            unsigned char hash_in[1024];
-            char Mix1[65] = {0};
-            strcat((char*)hash_in, qcg->valuestring);
-            strcat((char*)hash_in, QGC);
-            strcat((char*)hash_in, PW);
-            char *result = Sha256_auth(hash_in);
-            if(result != NULL)
-            {
-                strncpy(Mix1, result, 64);  // 复制最多 64 个字符，确保留一个位置给终止符
-                Mix1[64] = '\0';  // 确保字符串以 '\0' 结束    
-            }
-            //生成异或组合消息M1
-            char M1[17] = {0};
-            uint64_t mix1_num = strtoull((char*)Mix1 , NULL , 16);
-            uint64_t gid_num = strtoull((char*)GID, NULL, 16);
-            uint64_t xor_value = mix1_num ^ gid_num;
-            snprintf(M1, sizeof(M1), "%016" PRIX64, xor_value);
-            M1[16] = '\0';
-            
-            char pgid_c[10]= {0};
-            memcpy(pgid_c , PGID , 10);
-            
-            //生成消息认证码MAC
-            char MAC[65] = {0};
-            memset(hash_in , 0 , sizeof(hash_in));
-            strcat((char*)hash_in, pgid_c);
-            strcat((char*)hash_in, M1);
-            strcat((char*)hash_in, QGC);
-            char *result2 = Sha256_auth(hash_in);
-            if(result2 != NULL)
-            {
-                strncpy(MAC, result2, 64);  // 复制最多 64 个字符，确保留一个位置给终止符
-                MAC[64] = '\0';  // 确保字符串以 '\0' 结束    
-            }          
-            
-            // 开始构建回复的信息
-            cJSON *root = NULL;
-            /* Our "Video" datatype: */
-            root = cJSON_CreateObject();
-            cJSON_AddStringToObject(root, "PGID", pgid_c);
-            cJSON_AddStringToObject(root, "M1", M1);
-            cJSON_AddStringToObject(root, "QGC", QGC);
-            cJSON_AddStringToObject(root, "MAC", MAC);
-
-            out_jsonStr = cJSON_PrintUnformatted(root);	
-            escaped_out1 = add_escape_characters(out_jsonStr);
-            delay_ms(2000);
-            printf("\n");
-            esp8266_send_msg();
-            esp_rxflag = 1;
-        }
-        else if(esp_rxflag == 1)
-        {
-            // 检查消息格式是否正确
-            int rt = CheckMessage_es2cs_auth(json_es2cs);
-            if ( rt!= MSG_CHECK_OK) 
-            {
-                printf("Error CheckMessage_vcs2gecu_auth: \n");
-                print_errorinfo(rt);
-                return 1;
-            }
-            else if ( rt == MSG_CHECK_OK) 
-            {
-                retval = 0;
-            }
-            memset(receive_buf,0x00,receive_count);
-            receive_count = 0;
-            
-            //生成哈希组合
-            unsigned char hash_in[1024];
-            char Mix1[65] = {0};
-            strcat((char*)hash_in, QCG);
-            strcat((char*)hash_in, QGC);
-            strcat((char*)hash_in, GID);
-            char *result = Sha256_auth(hash_in);
-            if(result != NULL)
-            {
-                strncpy(Mix1, result, 64);  // 复制最多 64 个字符，确保留一个位置给终止符
-                Mix1[64] = '\0';  // 确保字符串以 '\0' 结束    
-            }
-            //生成异或组合消息M1
-            char M_2[17] = {0};
-            uint64_t mix1_num = strtoull((char*)Mix1 , NULL , 16);
-            uint64_t pqcg_num = strtoull((char*)PQCG, NULL, 16);
-            uint64_t xor_value = mix1_num ^ pqcg_num;
-            snprintf(M_2, sizeof(M_2), "%016" PRIX64, xor_value);
-            M_2[16] = '\0';
-            char a = PQCG;
-            
-            cJSON *m2 = cJSON_GetObjectItem(json_es2cs, "M2");
-            if(strcmp(M_2, m2->valuestring) == 0)
-            {
-                delay_ms(500);
-                printf("Certificate success, now sending third authentication message.\n");
-                
-                // *** 开始构建第三次认证消息 ***
-
-            // 生成 C1 = H(EIDi) XOR PQGE
-            char C1[17] = {0};
-            char *hash_eid = Sha256_auth((unsigned char*)EIDi);
-            uint64_t hash_eid_num = strtoull(hash_eid, NULL, 16);
-            uint64_t pqge_num = strtoull((char*)PQGE, NULL, 16);
-            uint64_t c1_xor_value = hash_eid_num ^ pqge_num;
-            snprintf(C1, sizeof(C1), "%016" PRIX64, c1_xor_value);
-
-            // 生成 C2 = H(EIDi) XOR PQCE
-            char C2[17] = {0};
-            uint64_t pqce_num = strtoull((char*)PQCE, NULL, 16);
-            uint64_t c2_xor_value = hash_eid_num ^ pqce_num;
-            snprintf(C2, sizeof(C2), "%016" PRIX64, c2_xor_value);
-
-            // 生成 EID_ XOR PQCG
-            char EID_XOR_PQCG[17] = {0};
-            uint64_t eidi_num = strtoull((char*)EIDi, NULL, 16);
-            uint64_t pqcg_num = strtoull((char*)PQCG, NULL, 16);
-            uint64_t eid_xor_pqcg_value = eidi_num ^ pqcg_num;
-            snprintf(EID_XOR_PQCG, sizeof(EID_XOR_PQCG), "%016" PRIX64, eid_xor_pqcg_value);
-
-            // 生成 MAC = H(PGID || EID_⊕PQCG || C1 || C2)
-            unsigned char mac_hash_in[1024] = {0};
-            strcat((char*)mac_hash_in, (char*)PGID);
-            strcat((char*)mac_hash_in, EID_XOR_PQCG);
-            strcat((char*)mac_hash_in, C1);
-            strcat((char*)mac_hash_in, C2);
-            char MAC[65] = {0};
-            char *mac_result = Sha256_auth(mac_hash_in);
-            strncpy(MAC, mac_result, 64);
-            MAC[64] = '\0';
-
-            // 构建 JSON 对象
-            cJSON *root = cJSON_CreateObject();
-            cJSON_AddStringToObject(root, "PGID", PGID);
-            cJSON_AddStringToObject(root, "EID_XOR_PQCG", EID_XOR_PQCG);
-            cJSON_AddStringToObject(root, "C1", C1);
-            cJSON_AddStringToObject(root, "C2", C2);
-            cJSON_AddStringToObject(root, "MAC", MAC);
-
-            // 打印并发送消息
-            out_jsonStr = cJSON_PrintUnformatted(root);
-            escaped_out1 = add_escape_characters(out_jsonStr);
-            esp8266_send_msg();
-
-            // 释放内存
-            myfree(escaped_out1);
-            cJSON_Delete(root);
-            cJSON_free(out_jsonStr);
-
-            esp_rxflag = 2; // 状态机进入第三次认证接收状态
-            }
-            else
-            {
-                printf("certificate fail\n");
-            }
-            free(json_es2cs);
-            
-        }
-         else if(esp_rxflag == 2)
-        {
-            
-            
-        }
+        
 	}
         
     /**********使用sm4.c文件进行解密操作，先留着看看********************/
