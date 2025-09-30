@@ -272,71 +272,49 @@ int CheckMessage2_gecu2vcs_auth (void * jsondata){
 }
 
 int CheckMessage3_gecu2vcs_auth (void * jsondata){
-    // MQTTClient_message *message = jsondata;
-
     cJSON *json = jsondata;
     if (!json) {
         printf("Error before: [%s]\n", cJSON_GetErrorPtr());
         return MSG_CHECK_ERROR_JSONTYPE;
     }
 
-     // 定义需要检查的键
-    const char *required_keys[] = {"PGID","M3","C1","C2","MAC"};
+    // 定义需要检查的键: PGID, M3, C1, MAC
+    const char *required_keys[] = {"PGID", "M3", "C1", "MAC"};
     int num_required_keys = sizeof(required_keys) / sizeof(required_keys[0]);
 
-    // 检查 JSON 对象中的键
     if (check_json_keys(json, required_keys, num_required_keys) != 1) {
-        printf("error: check_json_keys\n");
+        printf("error: check_json_keys for ECU auth message\n");
         return MSG_CHECK_ERROR_KEY;
-    }    
-    
+    }
+
     cJSON *PGID = cJSON_GetObjectItem(json, "PGID");
-    if (cJSON_IsString(PGID) && (PGID->valuestring != NULL)) {
-        printf("PGID: %s\n", PGID->valuestring);
-    }
-
     cJSON *M3 = cJSON_GetObjectItem(json, "M3");
-    if (cJSON_IsString(M3) && (M3->valuestring != NULL)) {
-        printf("M3: %s\n", M3->valuestring);
-    }
-
     cJSON *C1 = cJSON_GetObjectItem(json, "C1");
-    if (cJSON_IsString(C1) && (C1->valuestring != NULL)) {
-        printf("C1: %s\n", C1->valuestring);
-    }
-
-    cJSON *C2 = cJSON_GetObjectItem(json, "C2");
-    if (cJSON_IsString(C2) && (C2->valuestring != NULL)) {
-        printf("C2: %s\n", C2->valuestring);
-    }
-    
     cJSON *MAC = cJSON_GetObjectItem(json, "MAC");
-    if (cJSON_IsString(MAC) && (MAC->valuestring != NULL)) {
-        printf("MAC: %s\n", MAC->valuestring);
-    }
 
-    //开始验证MAC值（哈希值）
-    unsigned char hash_inbuf[512] = { 0 };
-	unsigned char hash_outbuff[32];//必须带unsigned ,sha256消息摘要输出为256位,即32字节
-	memset(hash_outbuff,0,32);
+    // 开始验证MAC值 H(PGID || M3 || C1)
+    unsigned char hash_inbuf[1024] = { 0 };
+    unsigned char hash_outbuff[32];
+    memset(hash_outbuff, 0, 32);
 
     strcat((char*)hash_inbuf, PGID->valuestring);
     strcat((char*)hash_inbuf, M3->valuestring);
     strcat((char*)hash_inbuf, C1->valuestring);
-    strcat((char*)hash_inbuf, C2->valuestring);
 
-	sha256(hash_inbuf,strlen((char*)hash_inbuf),hash_outbuff);
+    sha256(hash_inbuf, strlen((char*)hash_inbuf), hash_outbuff);
 
     char strbuf[65] = {0};
-    ByteToString(hash_outbuff,strbuf,32);
-    printf("计算出的MAC值:%s\n", strbuf);
+    ByteToString(hash_outbuff, strbuf, 32);
+    printf("  Calculated MAC: %s\n", strbuf);
+    printf("  Received MAC:   %s\n", MAC->valuestring);
 
-    if(strcmp(strbuf, MAC->valuestring) != 0)
+    if (strcmp(strbuf, MAC->valuestring) != 0)
     {
         return MSG_CHECK_ERROR_DIGEST;
     }
-    else{
-        printf("MAC值验证成功\n");
+    else
+    {
+        printf("  MAC verification successful\n");
         return MSG_CHECK_OK;
     }
     

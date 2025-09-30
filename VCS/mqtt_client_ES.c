@@ -18,6 +18,9 @@
 // 配置文件信息
 static cJSON *configjson;
 
+const char PQGE[] = "aabbccddeeff0011"; // 必须与GECU中的值一致
+int ECU_flag = 0; // 标志位，标志是否已经认证通过
+
 char* ADDRESS = NULL;
 char* CLIENTID = NULL;
 char* TOPIC = NULL;
@@ -156,7 +159,7 @@ void AuthMsg_callback1_GECU2VCS(char* msg){
     // 生成3s的延时
     sleep(5); 
 
-    // 生成随机数QGC
+    // 生成随机数QCG
     unsigned char MixM_inbuff2[512] = { 0 };
     unsigned char MixM_outbuff2[32] ;
 
@@ -323,147 +326,98 @@ void AuthMsg_callback2_GECU2VCS(char* msg){
 }
 
 // 云端认证网关第3条消息(认证ECU身份)
-// 接收{PGID, EID_⊕PQCG, C1, C2, MAC}，C1 = H(EIDi) ⊕ PQGE，C2 = C2 = H(EIDi) ⊕ PQCE
+// 接收{PGID, EID_⊕PQCG, C1, C2, MAC}，C1 = H(EIDi) ⊕ PQGE
 // 计算 H(QCG || QGC || PW)，与 M1⊕GID 比对，确认GECU身份。
 // 生成应答消息 M2 = H(QCG || QGC || GID) ⊕ PQCG，发送 {PGID, M2, MAC} 至GECU。
 void AuthMsg_callback3_GECU2VCS(char* msg){
     printf("***************云端认证ECU的身份*******************\n");
-    // receiveflag++;
-    // printf("receiveflag: %d\n", receiveflag);
-    // 解析JSON
+    
+    printf("*************** VCS: Authenticating ECU Identity *******************\n");
+
     cJSON *json = cJSON_Parse(msg);
     if (!json) {
         printf("Error before: [%s]\n", cJSON_GetErrorPtr());
-        return ;
+        return;
     }
 
-    // 检查格式、验证签名
+    // 1. 检查消息格式和MAC
+    // 注意：需要修改 CheckMessage3_gecu2vcs_auth 以匹配新的格式
     int rt = CheckMessage3_gecu2vcs_auth(json);
-    
     if(rt != MSG_CHECK_OK) {
         printf("error in CheckMessage3_gecu2vcs_auth:\n");
         print_errorinfo(rt);
-        return ;
+        cJSON_Delete(json);
+        return;
     }
 
-
-    //先验证hash亦或参数
     cJSON *PGID = cJSON_GetObjectItem(json, "PGID");
     cJSON *M3 = cJSON_GetObjectItem(json, "M3");
     cJSON *C1 = cJSON_GetObjectItem(json, "C1");
 
-    cJSON *C2 = cJSON_GetObjectItem(json, "C2");
-
-    cJSON *PQGE = cJSON_GetObjectItem(configjson, "PQGE");    
-    if (cJSON_IsString(PQGE) && (PQGE->valuestring != NULL)) {
-        printf("PQGE: %s\n", PQGE->valuestring);
-    }
-
-    cJSON *PQCE = cJSON_GetObjectItem(configjson, "PQCE");
-    cJSON *PQCG = cJSON_GetObjectItem(configjson, "PQCG");
-    
-
-
-    //先获取h(EIDi)
-    char heidi[64];
+    // 2. 反解 H(EIDi) from M3 = H(EIDi) ⊕ PQCG
+    char heidi[65] = {0};
     uint64_t m3_num = hex_str_to_uint64(M3->valuestring);
-    uint64_t pqcg_num = hex_str_to_uint64(PQCG->valuestring);
-    uint64_t xor_value = m3_num ^ pqcg_num;
-    snprintf(heidi, sizeof(heidi), "%016" PRIX64, xor_value);
+    cJSON *PQCG_json = cJSON_GetObjectItem(configjson, "PQCG");
+    uint64_t pqcg_num = hex_str_to_uint64(PQCG_json->valuestring);
+    uint64_t heidi_num = m3_num ^ pqcg_num;
+    snprintf(heidi, sizeof(heidi), "%016" PRIX64, heidi_num);
+    printf("  Recovered H(EIDi): %s\n", heidi);
 
-    
-
-    //然后使用h(EIDi)异或C1和C2，是否==PQGE和PQCE
-    char pqge[17];
-
+    // 3. 验证 C1 = H(EIDi) ⊕ PQGE
+    char calculated_pqge[17];
     uint64_t c1_num = hex_str_to_uint64(C1->valuestring);
-    uint64_t heidi_num = hex_str_to_uint64(heidi);
-    uint64_t xor_value1 = c1_num ^ heidi_num;
+    uint64_t xor_value_c1 = c1_num ^ heidi_num;
+    snprintf(calculated_pqge, sizeof(calculated_pqge), "%016" PRIX64, xor_value_c1);
 
-    printf("xor_value1: %016" PRIX64 "\n", xor_value1);
-    
-    snprintf(pqge, sizeof(pqge), "%016" PRIX64, xor_value1);
-    // pqge[16] = '\0';
-    for (int i = 0; pqge[i]; i++) {
-        pqge[i] = tolower(pqge[i]);
-    }
-
-
-    if(strcmp(pqge, PQGE->valuestring) != 0)
+    printf("  Calculated PQGE: %s\n", calculated_pqge);
+    printf("  Expected PQGE:   %s\n", PQGE);
+    if (strcasecmp(calculated_pqge, PQGE) != 0)
     {
-        printf("C1验证失败\n");
-        return ;
+        printf("  C1 verification FAILED. ECU is NOT authentic.\n");
+        // ... 可以选择发送失败消息 ...
+        cJSON_Delete(json);
+        return;
     }
-    else{
-        printf("C1验证成功\n");
-    }
-    
-    char pqce[64];
-    char *pqce1 = (char*)malloc(17);
-    uint64_t c2_num = hex_str_to_uint64(C2->valuestring);
-    uint64_t xor_value2 = c2_num ^ heidi_num;
-    snprintf(pqce, sizeof(pqce), "%016" PRIX64, xor_value2);
-    for (int i = 0; pqce[i]; i++) {
-        pqce[i] = tolower(pqce[i]);
-    }
-
-    if(strcmp(pqce, PQCE->valuestring) != 0)
+    else
     {
-        printf("C2验证失败\n");
-        return ;
-    }
-    else{
-        printf("C2验证成功\n");
-        printf("ECU身份验证成功");
+
+        printf("  C1 verification SUCCESS. ECU is authentic.\n");
     }
 
-    
+    // 4. 构建并发送成功响应 {PGID, H(EIDi), status, MAC}
+    //    H(EIDi) 用于GECU确认是哪个ECU的响应
+    char status_msg[] = "SUCCESS";
+    unsigned char hash_in_mac[1024] = { 0 };
+    char MAC_response[65] = {0};
 
-    //计算发送回去的MAC值({PGID, h(EIDi)⊕PW, MAC})   
-        //先算h(EIDi)⊕PW
-        cJSON *PW = cJSON_GetObjectItem(configjson, "PW");
-        char M_4[32];
-        uint64_t pw_num = hex_str_to_uint64(PW->valuestring);
-        uint64_t xor_value3 = heidi_num ^ pw_num;
-        snprintf(M_4, sizeof(M_4), "%016" PRIX64, xor_value3);
-    
-    unsigned char hash_inbuf[1024] = { 0 };
-    unsigned char hash_outbuff[32] = { 0 };
-    char MAC[32]= {0};
-    strcat((char*)hash_inbuf, PGID->valuestring);
-    strcat((char*)hash_inbuf, M_4);
-    
-    sha256(hash_inbuf,strlen(hash_inbuf),hash_outbuff);
-    ByteToString(hash_outbuff,MAC,32);
+    strcat((char*)hash_in_mac, PGID->valuestring);
+    strcat((char*)hash_in_mac, heidi);
+    strcat((char*)hash_in_mac, status_msg);
 
-        // 生成3s的延时
-    sleep(3);
+    unsigned char hash_outbuff[32];
+    sha256(hash_in_mac, strlen((char*)hash_in_mac), hash_outbuff);
+    ByteToString(hash_outbuff, MAC_response, 32);
 
-
-    /*******构建JSON消息格式******/
-    cJSON *root = NULL;
-    root = cJSON_CreateObject();
+    cJSON *root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "PGID", PGID->valuestring);
-    cJSON_AddStringToObject(root, "M4", M_4);
-    cJSON_AddStringToObject(root, "MAC", MAC);
-    /* declarations */
-    char *out_jsonStr = NULL;
-    out_jsonStr = cJSON_PrintUnformatted(root);
-    
+    cJSON_AddStringToObject(root, "H_EIDi", heidi); // 返回 H(EIDi) 以供识别
+    cJSON_AddStringToObject(root, "status", status_msg);
+    cJSON_AddStringToObject(root, "MAC", MAC_response);
+
+    sleep(3); // 模拟处理延时
+
+    char *out_jsonStr = cJSON_PrintUnformatted(root);
+
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     pubmsg.payload = out_jsonStr;
     pubmsg.payloadlen = strlen(out_jsonStr);
     pubmsg.qos = QOS;
     pubmsg.retained = 0;
-    
-    // 发布消息
+
     MQTTClient_deliveryToken token;
     MQTTClient_publishMessage(client, "innetwork/vcs2gecu", &pubmsg, &token);
-    printf("Waiting for publication of %s\n"
-           "on topic %s for client with ClientID: %s\n",
-           (char *)pubmsg.payload, "v2g/vcs2gecu", CLIENTID);
+    printf("  Sent SUCCESS response to GECU: %s\n", out_jsonStr);
     MQTTClient_waitForCompletion(client, token, TIMEOUT);
-    printf("Message with delivery token %d delivered\n", token);
 
     free(out_jsonStr); // 释放字符串内存
      // 释放 JSON 对象内存
@@ -591,7 +545,7 @@ int main(int argc, char* argv[]) {
     conn_opts.cleansession = 0;
     conn_opts.password = "123456";
     conn_opts.username = "VCS";
-
+    
     MQTTClient_setCallbacks(client, NULL, connlost, msgarrvd, delivered) ;
 
 
