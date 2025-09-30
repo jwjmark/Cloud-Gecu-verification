@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <inttypes.h>
+#include <stdlib.h> // 新增: 用于随机数生成
+#include <time.h>   // 新增: 用于随机数种子
 #include "./SYSTEM/sys/sys.h"
 #include "./SYSTEM/usart/usart.h"
 #include "./SYSTEM/delay/delay.h"
@@ -23,7 +25,8 @@
 // --- 自定义参数 ---
 #define NUM_ECUS 4
 const char* ecu_ids[NUM_ECUS] = {"ecu001", "ecu002", "ecu003", "ecu004"};
-const unsigned char PQGE[] = "aabbccddeeff0011"; // 新增: 用于ECU认证的预共享密钥
+unsigned char* PQGE[33] = {0}; // 新增: 用于ECU认证的预共享密钥
+unsigned char QGC[33] = {0};
 
 volatile AuthState g_auth_state = STATE_GECU_VCS_HANDSHAKE;
 int current_ecu_index = 0;
@@ -33,6 +36,8 @@ extern cJSON *json_es2cs;
 
 // 函数声明
 void send_ecu_auth_request(const char* eid);
+void generate_random_key(unsigned char* key, int byte_length); // 新增: 随机密钥生成函数声明
+
 
 int main(void)
 {
@@ -55,6 +60,7 @@ int main(void)
     uint8_t mode = 0; /* CAN工作模式: 0,普通模式; 1,环回模式 */
     char received_json_str[200];
     uint8_t rxbuff[16];          							//CAN 尾
+    
 	
     HAL_Init();                                 /* 初始化HAL库 */
     sys_stm32_clock_init(336, 8, 2, 7);         /* 设置时钟,168Mhz */
@@ -66,21 +72,22 @@ int main(void)
 	key_init();
 	can_init(CAN_SJW_1TQ, CAN_BS2_6TQ, CAN_BS1_7TQ, 6, CAN_MODE_NORMAL);  /* CAN初始化, 正常模式, 波特率500Kbps */
 	esp8266_init();
-//	unsigned char in[] = "1234567890";
-//	unsigned char buff[32];//???unsigned ,sha256???????256?,?32??
-//	memset(buff,0,32);
-//	sha256(in,sizeof(in),buff);
-//    char strbuf[65] = {0};
-//    ByteToString(buff,strbuf,32);
+
+    
+    // 初始化随机数种子
+    srand(256);
+
+    // 随机生成 PQGE
+    generate_random_key(PQGE, 16);
+    printf("Generated PQGE: %s\n", PQGE);
 
     sm4_context My_sm4_context;
-	unsigned char MY_key[16] = 		
-	{
-        0x01, 0x02, 0x03, 0x04,
-        0x05, 0x06, 0x07, 0x08,
-        0x09, 0x0A, 0x0B, 0x0C,
-        0x0D, 0x0E, 0x0F, 0x10
-    };
+	unsigned char MY_key[16];
+    // 随机生成 MY_key (SM4密钥)
+    for(int i=0; i<16; i++)
+    {
+        MY_key[i] = rand() % 256;
+    }
 
     /********************身份认证第一次发送挑战*************************/
     //生成消息：{PGID, PW⊕PQ_CG, MAC, T}
@@ -140,6 +147,9 @@ int main(void)
     while(1)
     {
         delay_ms(100);
+        // 动态随机生成QGC
+        
+        
 
 		if(esp8266_receive_msg() == 0)     //esp8266使用MQTT订阅消息
 		{
@@ -162,17 +172,16 @@ int main(void)
                 receive_count = 0;
                 
                 cJSON *qcg = cJSON_GetObjectItem(json_es2cs, "QCG");
-    //            extern char *QCG ;
-    //            extern char *QGC;
                 
                 char *QCG = qcg->valuestring;
-                char *QGC = "0123456789abcdef";//这里生成量子随机数QGC，之后取代这部分
+                generate_random_key(QGC, 16);
+                printf("Generated QGC: %s\n", QGC);
                 
                 //生成哈希组合
                 unsigned char hash_in[1024];
                 char Mix1[65] = {0};
                 strcat((char*)hash_in, qcg->valuestring);
-                strcat((char*)hash_in, QGC);
+                strcat((char*)hash_in, (char*)QGC);
                 strcat((char*)hash_in, PW);
                 char *result = Sha256_auth(hash_in);
                 if(result != NULL)
@@ -196,7 +205,7 @@ int main(void)
                 memset(hash_in , 0 , sizeof(hash_in));
                 strcat((char*)hash_in, pgid_c);
                 strcat((char*)hash_in, M1);
-                strcat((char*)hash_in, QGC);
+                strcat((char*)hash_in, (char*)QGC);
                 char *result2 = Sha256_auth(hash_in);
                 if(result2 != NULL)
                 {
@@ -210,7 +219,7 @@ int main(void)
                 root = cJSON_CreateObject();
                 cJSON_AddStringToObject(root, "PGID", pgid_c);
                 cJSON_AddStringToObject(root, "M1", M1);
-                cJSON_AddStringToObject(root, "QGC", QGC);
+                cJSON_AddStringToObject(root, "QGC", (char*)QGC);
                 cJSON_AddStringToObject(root, "MAC", MAC);
 
                 out_jsonStr = cJSON_PrintUnformatted(root);	
@@ -242,7 +251,7 @@ int main(void)
                 unsigned char hash_in[1024];
                 char Mix1[65] = {0};
                 strcat((char*)hash_in, QCG);
-                strcat((char*)hash_in, QGC);
+                strcat((char*)hash_in, (char*)QGC);
                 strcat((char*)hash_in, GID);
                 char *result = Sha256_auth(hash_in);
                 if(result != NULL)
@@ -360,11 +369,11 @@ void send_ecu_auth_request(const char* eid)
     snprintf(M3, sizeof(M3), "%016" PRIX64, heidi_num ^ pqcg_num);
     printf("  M3 (H(EIDi) XOR PQCG): %s\n", M3);
 
-    // 3. 计算 C1 = H(EIDi) ⊕ PQGE
+    // 3. 计算 C1 = H(EIDi) ⊕ QGC
     char C1[17] = {0};
-    uint64_t pqge_num = strtoull((char*)PQGE, NULL, 16);
-    snprintf(C1, sizeof(C1), "%016" PRIX64, heidi_num ^ pqge_num);
-    printf("  C1 (H(EIDi) XOR PQGE): %s\n", C1);
+    uint64_t qgc_num = strtoull((char*)QGC, NULL, 16);
+    snprintf(C1, sizeof(C1), "%016" PRIX64, heidi_num ^ qgc_num);
+    printf("  C1 (H(EIDi) XOR qgc): %s\n", C1);
 
     // 4. 计算 MAC = H(PGID || M3 || C1)
     unsigned char hash_in_mac[1024] = {0};
@@ -395,5 +404,28 @@ void send_ecu_auth_request(const char* eid)
 
 //    cJSON_Delete(root_ecu_auth);
 //    free(out);
+}
+
+/**
+ * @brief 生成指定字节长度的随机十六进制字符串密钥
+ * @param key 用于存储密钥的缓冲区
+ * @param byte_length 密钥的字节长度 (例如, 16字节)
+ */
+void generate_random_key(unsigned char* key, int byte_length)
+{
+    int i;
+    for (i = 0; i < byte_length * 2; i++)
+    {
+        int random_value = rand() % 16;
+        if (random_value < 10)
+        {
+            key[i] = '0' + random_value;
+        }
+        else
+        {
+            key[i] = 'a' + (random_value - 10);
+        }
+    }
+    key[byte_length * 2] = '\0';
 }
 

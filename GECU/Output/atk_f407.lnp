@@ -29,7 +29,7 @@
 "..\..\output\messagecheck.o"
 "..\..\output\malloc.o"
 "..\..\output\sha256.o"
---strict --scatter "..\..\Output\atk_f407.sct"
+--library_type=microlib --strict --scatter "..\..\Output\atk_f407.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list "..\..\Output\atk_f407.map" -o ..\..\Output\atk_f407.axf
