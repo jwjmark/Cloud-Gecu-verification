@@ -59,7 +59,6 @@ extern int current_ecu_index;
 
 char PGID[65] = {0};  // 定义并初始化为空字符串
 char *QCG = 0 ;
-char *QGC = 0;
 cJSON *json_es2cs;
 
 /*

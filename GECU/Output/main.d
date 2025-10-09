@@ -2,6 +2,8 @@
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdio.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\inttypes.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdint.h \
+  C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdlib.h \
+  C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\time.h \
   ..\..\Drivers\.\SYSTEM\sys\sys.h \
   ..\..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h \
   ..\..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f407xx.h \
@@ -74,7 +76,6 @@
   ..\..\Drivers\BSP\.\ESP8266\esp8266.h ..\..\Drivers\BSP\.\SM4\sm4.h \
   ..\..\Drivers\BSP\.\SHA256\sha256.h ..\..\Drivers\BSP\.\CJSON\cJSON.h \
   ..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h \
-  C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdlib.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\ctype.h \
   ..\..\Drivers\BSP\.\CAN\can.h \
   ..\..\Drivers\BSP\.\MESSAGECHECK\messageCheck.h \

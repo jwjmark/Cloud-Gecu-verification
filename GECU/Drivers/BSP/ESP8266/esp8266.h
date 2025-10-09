@@ -15,7 +15,7 @@ extern char PGID[65];
 extern int esp_rxflag ;
 extern int state ;      //开发板状态，0：身份认证状态；1：车内通信状态
 extern char *QCG ;
-extern char *QGC ;
+
 
 
 //void uart2_receiver_handle(void);
