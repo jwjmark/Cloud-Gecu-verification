@@ -12,23 +12,22 @@
     
     "PQCE":"fedcba9876543210",
     "PQGE":"fedcba9876543210",
-    "ECUID_TABLE": [
-        "ecu001",
-        "ecu002",
-        "ecu003",
-        "ecu004"
-    ],
-
-
-
-    "EVID_TABLE": [
-        "ev001",
-        "ev002",
-        "ev003"
-    ],
-    "CSID_TABLE": [
-        "cs001",
-        "cs002",
-        "cs003"
+    "ECUs": [
+        {
+        "EID": "11111111aaaa1111",
+        "PQce": "ececec121212ecec"
+        },
+        {
+        "EID": "22222222bbbb2222",
+        "PQce": "dbdbdb343434dbdb"
+        },
+        {
+        "EID": "33333333cccc3333",
+        "PQce": "ababab565656abab"
+        },
+        {
+        "EID": "44444444dddd4444",
+        "PQce": "cdcdcd787878cdcd"
+        }
     ]
 }

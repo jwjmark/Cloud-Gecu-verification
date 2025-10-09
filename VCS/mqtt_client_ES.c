@@ -14,6 +14,14 @@
 #include"sm4.h"
 #include"byte2string.h"
 
+// 新增: 用于获取IP地址的头文件
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <netdb.h> // 修正: 添加此头文件以定义 NI_MAXHOST
+
 
 // 配置文件信息
 static cJSON *configjson;
@@ -38,8 +46,67 @@ MQTTClient client;
 MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 int rc;
 
+/**
+ * @brief 获取本机在局域网中的IPv4地址
+ * @return 返回IP地址字符串，如果失败则返回NULL
+ */
+char* get_local_ip() {
+    static char ip_buffer[INET_ADDRSTRLEN]; // 静态缓冲区，用于存储IP地址字符串
+    struct ifaddrs *ifaddr, *ifa;
+    int family;
 
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs");
+        return NULL;
+    }
 
+    // 遍历所有网络接口
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL)
+            continue;
+
+        family = ifa->ifa_addr->sa_family;
+
+        // 我们只关心IPv4地址，并排除本地回环接口("lo")
+        if (family == AF_INET && strcmp(ifa->ifa_name, "lo") != 0) {
+            struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
+            inet_ntop(AF_INET, &sa->sin_addr, ip_buffer, sizeof(ip_buffer));
+            freeifaddrs(ifaddr); // 释放内存
+            return ip_buffer; // 找到第一个符合条件的IP地址后就返回
+        }
+    }
+
+    freeifaddrs(ifaddr); // 释放内存
+    return NULL; // 如果没有找到非回环的IPv4地址
+}
+
+// 辅助函数：将单个十六进制字符转换为整数值
+int hex_char_to_int(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+// 辅助函数：将十六进制字符串转换为字节数组
+void hex_to_bytes(unsigned char* dest, const char* src, int byte_len) {
+    for (int i = 0; i < byte_len; i++) {
+        int high = hex_char_to_int(src[i * 2]);
+        int low = hex_char_to_int(src[i * 2 + 1]);
+        if (high != -1 && low != -1) {
+            dest[i] = (high << 4) | low;
+        } else {
+            dest[i] = 0; // 错误处理
+        }
+    }
+}
+
+// 辅助函数：将字节数组转换为十六进制字符串
+void bytes_to_hex(char* dest, const unsigned char* src, int byte_len) {
+    for (int i = 0; i < byte_len; i++) {
+        sprintf(dest + i * 2, "%02x", src[i]);
+    }
+}
 
 
 // 生成伪随机字符
@@ -345,7 +412,7 @@ void AuthMsg_callback2_GECU2VCS(char* msg){
 }
 
 // 云端认证网关第3条消息(认证ECU身份)
-// 接收{PGID, EID_⊕PQCG, C1, C2, MAC}，C1 = H(EIDi) ⊕ QGC
+// 接收{PGID, H(EIDi)⊕PQCG, C1, MAC}，C1 = H(EIDi) ⊕ QGC
 // 计算 H(QCG || QGC || PW)，与 M1⊕GID 比对，确认GECU身份。
 // 生成应答消息 M2 = H(QCG || QGC || GID) ⊕ PQCG，发送 {PGID, M2, MAC} 至GECU。
 void AuthMsg_callback3_GECU2VCS(char* msg){
@@ -373,48 +440,62 @@ void AuthMsg_callback3_GECU2VCS(char* msg){
     cJSON *M3 = cJSON_GetObjectItem(json, "M3");
     cJSON *C1 = cJSON_GetObjectItem(json, "C1");
 
-    // 2. 反解 H(EIDi) from M3 = H(EIDi) ⊕ PQCG
-    char heidi[65] = {0};
-    uint64_t m3_num = hex_str_to_uint64(M3->valuestring);
+// 2. 修正: 使用字节级异或反解 H(EIDi) 的前16字节
+    unsigned char m3_bytes[16];
+    unsigned char pqcg_bytes[16];
+    unsigned char recovered_heidi_bytes_part[16]; // H(EIDi)的前16字节
+    char recovered_heidi_hex_part[33] = {0};
+
+    hex_to_bytes(m3_bytes, M3->valuestring, 16);
     cJSON *PQCG_json = cJSON_GetObjectItem(configjson, "PQCG");
-    uint64_t pqcg_num = hex_str_to_uint64(PQCG_json->valuestring);
-    uint64_t heidi_num = m3_num ^ pqcg_num;
-    snprintf(heidi, sizeof(heidi), "%016" PRIX64, heidi_num);
-    printf("  Recovered H(EIDi): %s\n", heidi);
+    hex_to_bytes(pqcg_bytes, PQCG_json->valuestring, 16);
 
-    // 3. 验证 C1 = H(EIDi) ⊕ QGC
-    char calculated_qgc[17];
-    uint64_t c1_num = hex_str_to_uint64(C1->valuestring);
-    printf("  Received C1: %s\n", C1->valuestring);
-    uint64_t xor_value_c1 = c1_num ^ heidi_num;
-    printf("  Calculated qgc (from C1 ⊕ H(EIDi)): %016" PRIX64 "\n", xor_value_c1);
-    snprintf(calculated_qgc, sizeof(calculated_qgc), "%016" PRIX64, xor_value_c1);
-  
+    // 修正 BUG #1: 循环边界应为16
+    for(int i = 0; i < 16; i++) {
+        recovered_heidi_bytes_part[i] = m3_bytes[i] ^ pqcg_bytes[i];
+    }
+    
+    // 修正 BUG #2: 转换长度应为16
+    bytes_to_hex(recovered_heidi_hex_part, recovered_heidi_bytes_part, 16);
+    printf("  Recovered H(EIDi) Part (16 bytes): %s\n", recovered_heidi_hex_part);
 
 
-    printf("  Calculated QGC: %s\n", calculated_qgc);
-    printf("  Expected QGC:   %s\n", qgc);
-    if (strcasecmp(calculated_qgc, qgc) != 0)
+    // 3. 修正: 使用字节级异或验证 C1
+    unsigned char c1_bytes[16];
+    unsigned char pqge_bytes[16];
+    unsigned char calculated_c1_bytes[16];
+    char calculated_c1_hex[33] = {0};
+    
+    cJSON *PQGE_json = cJSON_GetObjectItem(configjson, "PQGE"); // 从配置中获取PQGE
+    hex_to_bytes(pqge_bytes, PQGE_json->valuestring, 16);
+
+    for(int i = 0; i < 16; i++) {
+        calculated_c1_bytes[i] = recovered_heidi_bytes_part[i] ^ pqge_bytes[i];
+    }
+    bytes_to_hex(calculated_c1_hex, calculated_c1_bytes, 16);
+
+    printf("  Received C1:         %s\n", C1->valuestring);
+    printf("  Calculated C1:       %s\n", calculated_c1_hex);
+
+    if (strcasecmp(calculated_c1_hex, C1->valuestring) != 0)
     {
         printf("  C1 verification FAILED. ECU is NOT authentic.\n");
-        // ... 可以选择发送失败消息 ...
         cJSON_Delete(json);
         return;
     }
     else
     {
-
         printf("  C1 verification SUCCESS. ECU is authentic.\n");
     }
-
-    // 4. 构建并发送成功响应 {PGID, H(EIDi), status, MAC}
-    //    H(EIDi) 用于GECU确认是哪个ECU的响应
+// 4. 构建并发送成功响应
     char status_msg[] = "SUCCESS";
     unsigned char hash_in_mac[1024] = { 0 };
     char MAC_response[65] = {0};
 
+    // 注意: GECU侧需要H(EIDi)来识别是哪个ECU的响应，但VCS只恢复了部分哈希
+    // 为了让GECU能匹配，我们这里返回恢复出的部分哈希
     strcat((char*)hash_in_mac, PGID->valuestring);
-    strcat((char*)hash_in_mac, heidi);
+    strcat((char*)hash_in_mac, recovered_heidi_hex_part); 
     strcat((char*)hash_in_mac, status_msg);
 
     unsigned char hash_outbuff[32];
@@ -423,11 +504,11 @@ void AuthMsg_callback3_GECU2VCS(char* msg){
 
     cJSON *root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "PGID", PGID->valuestring);
-    cJSON_AddStringToObject(root, "H_EIDi", heidi); // 返回 H(EIDi) 以供识别
+    cJSON_AddStringToObject(root, "H_EIDi_part", recovered_heidi_hex_part); // 返回部分 H(EIDi) 以供识别
     cJSON_AddStringToObject(root, "status", status_msg);
     cJSON_AddStringToObject(root, "MAC", MAC_response);
 
-    sleep(3); // 模拟处理延时
+    sleep(1);
 
     char *out_jsonStr = cJSON_PrintUnformatted(root);
 
@@ -442,11 +523,8 @@ void AuthMsg_callback3_GECU2VCS(char* msg){
     printf("  Sent SUCCESS response to GECU: %s\n", out_jsonStr);
     MQTTClient_waitForCompletion(client, token, TIMEOUT);
 
-    free(out_jsonStr); // 释放字符串内存
-     // 释放 JSON 对象内存
+    free(out_jsonStr);
     cJSON_Delete(root);
-
-    // 释放内存
     cJSON_Delete(json);
     receiveflag++;
 }
@@ -477,7 +555,7 @@ void read_json_file(const char *filename) {
     }
 
     // 读取数据
-    cJSON *address = cJSON_GetObjectItem(configjson, "address");
+    //cJSON *address = cJSON_GetObjectItem(configjson, "address");
     cJSON *clientid = cJSON_GetObjectItem(configjson, "clientid");
     cJSON *topic = cJSON_GetObjectItem(configjson, "topic");
     cJSON *qos = cJSON_GetObjectItem(configjson, "qos");
@@ -485,10 +563,10 @@ void read_json_file(const char *filename) {
     
 
     // 打印数据
-    if (cJSON_IsString(address) && (address->valuestring != NULL)) {
-        printf("address: %s\n", address->valuestring);
-        ADDRESS = address->valuestring;
-    }
+    // if (cJSON_IsString(address) && (address->valuestring != NULL)) {
+    //     printf("address: %s\n", address->valuestring);
+    //     ADDRESS = address->valuestring;
+    // }
     if (cJSON_IsNumber(qos) ) {
         printf("qos: %d\n", qos->valueint);
         QOS = qos->valueint;
@@ -564,6 +642,28 @@ int main(int argc, char* argv[]) {
     srand(time(NULL));
     read_json_file("VCSconfig.json");    
     
+        // 动态获取本机IP地址
+    char* local_ip = get_local_ip();
+    static char broker_address[100]; // 使用静态数组存储地址
+
+    if (local_ip != NULL) {
+        // 构建完整的 MQTT Broker 地址 (tcp://ip:port)
+        snprintf(broker_address, sizeof(broker_address), "tcp://%s:1883", local_ip);
+        ADDRESS = broker_address;
+        printf("成功获取本机IP, MQTT Broker地址设置为: %s\n", ADDRESS);
+    } else {
+        printf("警告: 无法自动获取本机IP地址, 将尝试使用配置文件中的地址。\n");
+        // 如果获取失败，则回退到使用配置文件中的地址
+        cJSON* address_json = cJSON_GetObjectItem(configjson, "address");
+        if (cJSON_IsString(address_json) && (address_json->valuestring != NULL)) {
+            ADDRESS = address_json->valuestring;
+             printf("使用配置文件中的地址: %s\n", ADDRESS);
+        } else {
+            fprintf(stderr, "错误: 配置文件中也未找到地址, 程序无法启动。\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    
 
     MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
     conn_opts.keepAliveInterval = 20;
@@ -581,10 +681,11 @@ int main(int argc, char* argv[]) {
 
     MQTTClient_subscribe(client, TOPIC, QOS);
 
-    
+    printf("VCS已启动，等待来自GECU的消息...\n 按下回车键退出程序。\n");
     getchar();
 
     MQTTClient_disconnect(client, 10000);
     MQTTClient_destroy(&client);
+    cJSON_Delete(configjson);
     return rc;
 }
