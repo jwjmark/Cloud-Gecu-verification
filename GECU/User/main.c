@@ -24,8 +24,13 @@
 
 // --- 自定义参数 ---
 #define NUM_ECUS 4
-const char* ecu_ids[NUM_ECUS] = {"ecu001", "ecu002", "ecu003", "ecu004"};
-unsigned char* PQGE[33] = {0}; // 新增: 用于ECU认证的预共享密钥
+const char* ecu_ids[NUM_ECUS] = {
+    "11111111aaaa1111",
+    "22222222bbbb2222",
+    "33333333cccc3333",
+    "44444444dddd4444"
+};
+unsigned char PQGE[33] = {0}; // 新增: 用于ECU认证的预共享密钥
 unsigned char QGC[33] = {0};
 
 volatile AuthState g_auth_state = STATE_GECU_VCS_HANDSHAKE;
@@ -35,7 +40,7 @@ int current_ecu_index = 0;
 extern cJSON *json_es2cs;
 
 // 函数声明
-void send_ecu_auth_request(const char* eid);
+void send_ecu_auth_request(const char* eid, const char* qgc);
 void generate_random_key(unsigned char* key, int byte_length); // 新增: 随机密钥生成函数声明
 
 
@@ -326,7 +331,7 @@ int main(void)
                 if (current_ecu_index < NUM_ECUS)
                 {
                     printf("\n--- Authenticating ECU #%d: %s ---\n", current_ecu_index + 1, ecu_ids[current_ecu_index]);
-                    send_ecu_auth_request(ecu_ids[current_ecu_index]);
+                    send_ecu_auth_request(ecu_ids[current_ecu_index],(char*)QGC);
                     g_auth_state = STATE_ECU_AUTH_PENDING; // 等待VCS的回应
 
                 }
@@ -349,39 +354,60 @@ int main(void)
  * @brief 构建并发送ECU身份认证请求
  * @param eid 要认证的ECU ID
  */
-void send_ecu_auth_request(const char* eid)
+void send_ecu_auth_request(const char* eid, const char* qgc)
 {
     char pgid_s[10] = {0};
     memcpy(pgid_s , PGID , 10);
-    
+
     // 1. 计算 H(EIDi)
-    char heidi[65] = {0};
+    char heidi_hex[33] = {0};
     char *result_heidi = Sha256_auth((unsigned char*)eid);
     if (result_heidi != NULL) {
-        strncpy(heidi, result_heidi, 64);
+        strncpy(heidi_hex, result_heidi, 32);
     }
-    printf("  H(EIDi): %s\n", heidi);
+    printf("  H(EIDi): %s\n", heidi_hex);
 
+    // 修正: 使用字节级异或
     // 2. 计算 M3 = H(EIDi) ⊕ PQCG
-    char M3[17] = {0};
-    uint64_t heidi_num = strtoull(heidi, NULL, 16);
-    uint64_t pqcg_num = strtoull((char*)PQCG, NULL, 16);
-    snprintf(M3, sizeof(M3), "%016" PRIX64, heidi_num ^ pqcg_num);
-    printf("  M3 (H(EIDi) XOR PQCG): %s\n", M3);
+    unsigned char heidi_bytes[32]; // 256 bits for SHA256
+    unsigned char pqcg_bytes[16];  // 128 bits for PQCG
+    unsigned char m3_bytes[16];    // Result is 128 bits
+    char m3_hex[33] = {0};
 
+    hex_to_bytes(heidi_bytes, heidi_hex, 32);
+    hex_to_bytes(pqcg_bytes, (const char*)PQCG, 16);
+
+    // 在哈希的前16个字节上执行异或
+    for(int i = 0; i < 16; i++) {
+        m3_bytes[i] = heidi_bytes[i] ^ pqcg_bytes[i];
+    }
+    bytes_to_hex(m3_hex, m3_bytes, 16);
+    printf("  M3 (H(EIDi) XOR PQCG): %s\n", m3_hex);
+
+
+    // 修正: 使用字节级异或
     // 3. 计算 C1 = H(EIDi) ⊕ QGC
-    char C1[17] = {0};
-    uint64_t qgc_num = strtoull((char*)QGC, NULL, 16);
-    snprintf(C1, sizeof(C1), "%016" PRIX64, heidi_num ^ qgc_num);
-    printf("  C1 (H(EIDi) XOR qgc): %s\n", C1);
+    unsigned char qgc_t[65] = {0};
+    unsigned char pqge_bytes[16];
+    unsigned char c1_bytes[16];
+    char c1_hex[33] = {0};
+
+    hex_to_bytes(qgc_t, (const char*)qgc, 16);
+
+    // 在哈希的前16个字节上执行异或
+    for(int i = 0; i < 16; i++) {
+        c1_bytes[i] = heidi_bytes[i] ^ qgc_t[i];
+    }
+    bytes_to_hex(c1_hex, c1_bytes, 16);
+    printf("  C1 (H(EIDi) XOR QGC): %s\n", c1_hex);
 
     // 4. 计算 MAC = H(PGID || M3 || C1)
     unsigned char hash_in_mac[1024] = {0};
     strcat((char*)hash_in_mac, pgid_s);
-    strcat((char*)hash_in_mac, M3);
-    strcat((char*)hash_in_mac, C1);
+    strcat((char*)hash_in_mac, m3_hex);
+    strcat((char*)hash_in_mac, c1_hex);
     char MAC[65] = {0};
-    
+
     char *mac_result = Sha256_auth(hash_in_mac);
     if (mac_result != NULL) {
         strncpy(MAC, mac_result, 64);
@@ -391,8 +417,8 @@ void send_ecu_auth_request(const char* eid)
     // 5. 构建JSON并发送
     cJSON *root_ecu_auth = cJSON_CreateObject();
     cJSON_AddStringToObject(root_ecu_auth, "PGID", pgid_s);
-    cJSON_AddStringToObject(root_ecu_auth, "M3", M3);
-    cJSON_AddStringToObject(root_ecu_auth, "C1", C1);
+    cJSON_AddStringToObject(root_ecu_auth, "M3", m3_hex);
+    cJSON_AddStringToObject(root_ecu_auth, "C1", c1_hex);
     cJSON_AddStringToObject(root_ecu_auth, "MAC", MAC);
 
     extern char *out;
@@ -401,9 +427,7 @@ void send_ecu_auth_request(const char* eid)
     escaped_out1 = add_escape_characters(out);
     printf("  Sending to VCS: %s\n", out);
     esp8266_send_msg();
-
-//    cJSON_Delete(root_ecu_auth);
-//    free(out);
+    cJSON_Delete(root_ecu_auth);
 }
 
 /**

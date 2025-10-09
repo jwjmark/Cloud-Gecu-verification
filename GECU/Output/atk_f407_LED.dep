@@ -1,7 +1,7 @@
 Dependencies for Project 'atk_f407', Target 'LED': (DO NOT MODIFY !)
 CompilerVersion: 6160000::V6.16::ARMCLANG
 F (..\..\Drivers\CMSIS\Device\ST\STM32F4xx\Source\Templates\arm\startup_stm32f407xx.s)(0x67C6FC39)(--cpu Cortex-M4.fp.sp -g --pd "__MICROLIB SETA 1"-IC:\Users\40827\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include--pd "__UVISION_VERSION SETA 536"--pd "STM32F407xx SETA 1"--list ..\..\output\startup_stm32f407xx.lst--xref -o ..\..\output\startup_stm32f407xx.o--depend ..\..\output\startup_stm32f407xx.d)
-F (..\..\User\main.c)(0x68DBC88F)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O0 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -I ../../User -I ../../Drivers -I ../../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../../Drivers/CMSIS/Include -I ../../Drivers/STM32F4xx_HAL_Driver/Inc -I ../../Middlewares -I ../../Drivers/BSP -I ../../Drivers/SYSTEM/delay -I ../../Drivers/SYSTEM/usart-IC:/Users/40827/AppData/Local/Arm/Packs/Keil/STM32F4xx_DFP/2.14.0/Drivers/CMSIS/Device/ST/STM32F4xx/Include-D__UVISION_VERSION="536" -DSTM32F407xx -DUSE_HAL_DRIVER -DSTM32F407xx-o ../../output/main.o -MD)
+F (..\..\User\main.c)(0x68E77E96)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O0 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -I ../../User -I ../../Drivers -I ../../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../../Drivers/CMSIS/Include -I ../../Drivers/STM32F4xx_HAL_Driver/Inc -I ../../Middlewares -I ../../Drivers/BSP -I ../../Drivers/SYSTEM/delay -I ../../Drivers/SYSTEM/usart-IC:/Users/40827/AppData/Local/Arm/Packs/Keil/STM32F4xx_DFP/2.14.0/Drivers/CMSIS/Device/ST/STM32F4xx/Include-D__UVISION_VERSION="536" -DSTM32F407xx -DUSE_HAL_DRIVER -DSTM32F407xx-o ../../output/main.o -MD)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x603507D4)
 I (C:\Keil_v5\ARM\ARMCLANG\include\inttypes.h)(0x603507B6)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x603507D0)
@@ -77,11 +77,11 @@ I (..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_hcd.h)(0x64ACF40E)
 I (..\..\Drivers\.\SYSTEM\usart\usart.h)(0x67C7F37E)
 I (..\..\Drivers\.\SYSTEM\delay\delay.h)(0x64ACF40E)
 I (..\..\Drivers\.\BSP\LED\led.h)(0x64ACF40E)
-I (..\..\Drivers\BSP\.\ESP8266\esp8266.h)(0x68DBB78F)
+I (..\..\Drivers\BSP\.\ESP8266\esp8266.h)(0x68DBCA8D)
 I (..\..\Drivers\BSP\.\SM4\sm4.h)(0x62D65036)
 I (..\..\Drivers\BSP\.\SHA256\sha256.h)(0x677E1A03)
 I (..\..\Drivers\BSP\.\CJSON\cJSON.h)(0x677F798B)
-I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x677240CC)
+I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x68E77836)
 I (C:\Keil_v5\ARM\ARMCLANG\include\ctype.h)(0x603507B6)
 I (..\..\Drivers\BSP\.\CAN\can.h)(0x67CA9C2E)
 I (..\..\Drivers\BSP\.\MESSAGECHECK\messageCheck.h)(0x68DB88AA)
@@ -435,7 +435,7 @@ I (..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x64ACF40E)
 I (..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_hcd.h)(0x64ACF40E)
 I (..\..\Drivers\.\SYSTEM\usart\usart.h)(0x67C7F37E)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x603507D4)
-I (..\..\Drivers\BSP\.\ESP8266\esp8266.h)(0x68DBB78F)
+I (..\..\Drivers\BSP\.\ESP8266\esp8266.h)(0x68DBCA8D)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x603507CA)
 I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x603507D0)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdlib.h)(0x603507D0)
@@ -1326,8 +1326,8 @@ I (..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd.h)(0x64ACF40E)
 I (..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h)(0x64ACF40E)
 I (..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h)(0x64ACF40E)
 I (..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_hcd.h)(0x64ACF40E)
-F (..\..\Drivers\BSP\BYTE2STRING\byte2string.c)(0x677240CC)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O0 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -I ../../User -I ../../Drivers -I ../../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../../Drivers/CMSIS/Include -I ../../Drivers/STM32F4xx_HAL_Driver/Inc -I ../../Middlewares -I ../../Drivers/BSP -I ../../Drivers/SYSTEM/delay -I ../../Drivers/SYSTEM/usart-IC:/Users/40827/AppData/Local/Arm/Packs/Keil/STM32F4xx_DFP/2.14.0/Drivers/CMSIS/Device/ST/STM32F4xx/Include-D__UVISION_VERSION="536" -DSTM32F407xx -DUSE_HAL_DRIVER -DSTM32F407xx-o ../../output/byte2string.o -MD)
-I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x677240CC)
+F (..\..\Drivers\BSP\BYTE2STRING\byte2string.c)(0x68E7782C)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O0 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -I ../../User -I ../../Drivers -I ../../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../../Drivers/CMSIS/Include -I ../../Drivers/STM32F4xx_HAL_Driver/Inc -I ../../Middlewares -I ../../Drivers/BSP -I ../../Drivers/SYSTEM/delay -I ../../Drivers/SYSTEM/usart-IC:/Users/40827/AppData/Local/Arm/Packs/Keil/STM32F4xx_DFP/2.14.0/Drivers/CMSIS/Device/ST/STM32F4xx/Include-D__UVISION_VERSION="536" -DSTM32F407xx -DUSE_HAL_DRIVER -DSTM32F407xx-o ../../output/byte2string.o -MD)
+I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x68E77836)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdlib.h)(0x603507D0)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x603507D4)
 I (C:\Keil_v5\ARM\ARMCLANG\include\ctype.h)(0x603507B6)
@@ -1417,7 +1417,7 @@ I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x603507D0)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdlib.h)(0x603507D0)
 I (C:\Keil_v5\ARM\ARMCLANG\include\inttypes.h)(0x603507B6)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x603507D0)
-I (..\..\Drivers\BSP\.\ESP8266\esp8266.h)(0x68DBB78F)
+I (..\..\Drivers\BSP\.\ESP8266\esp8266.h)(0x68DBCA8D)
 I (..\..\Drivers\.\SYSTEM\sys\sys.h)(0x64ACF40E)
 I (..\..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h)(0x64ACF40E)
 I (..\..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f407xx.h)(0x64ACF40E)
@@ -1494,7 +1494,7 @@ I (..\..\Drivers\BSP\.\MESSAGECHECK\messageCheck.h)(0x68DB88AA)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x603507CA)
 I (..\..\Drivers\BSP\.\SM4\sm4.h)(0x62D65036)
 I (..\..\Drivers\BSP\.\SHA256\sha256.h)(0x677E1A03)
-I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x677240CC)
+I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x68E77836)
 I (C:\Keil_v5\ARM\ARMCLANG\include\ctype.h)(0x603507B6)
 I (..\..\Drivers\BSP\.\CAN\can.h)(0x67CA9C2E)
 I (..\..\Drivers\BSP\.\MALLOC\malloc.h)(0x677DDF7D)
@@ -1656,7 +1656,7 @@ I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x603507D0)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdlib.h)(0x603507D0)
 I (..\..\Drivers\BSP\.\SHA256\sha256.h)(0x677E1A03)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x603507D0)
-I (..\..\Drivers\BSP\.\ESP8266\esp8266.h)(0x68DBB78F)
+I (..\..\Drivers\BSP\.\ESP8266\esp8266.h)(0x68DBCA8D)
 I (..\..\Drivers\.\SYSTEM\sys\sys.h)(0x64ACF40E)
 I (..\..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h)(0x64ACF40E)
 I (..\..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f407xx.h)(0x64ACF40E)
@@ -1728,7 +1728,7 @@ I (..\..\Drivers\BSP\.\MESSAGECHECK\messageCheck.h)(0x68DB88AA)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x603507CA)
 I (..\..\Drivers\BSP\.\SM4\sm4.h)(0x62D65036)
 I (..\..\Drivers\BSP\.\CJSON\cJSON.h)(0x677F798B)
-I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x677240CC)
+I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x68E77836)
 I (C:\Keil_v5\ARM\ARMCLANG\include\ctype.h)(0x603507B6)
 F (..\..\Drivers\BSP\MALLOC\malloc.c)(0x677DDF7C)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O0 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -I ../../User -I ../../Drivers -I ../../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../../Drivers/CMSIS/Include -I ../../Drivers/STM32F4xx_HAL_Driver/Inc -I ../../Middlewares -I ../../Drivers/BSP -I ../../Drivers/SYSTEM/delay -I ../../Drivers/SYSTEM/usart-IC:/Users/40827/AppData/Local/Arm/Packs/Keil/STM32F4xx_DFP/2.14.0/Drivers/CMSIS/Device/ST/STM32F4xx/Include-D__UVISION_VERSION="536" -DSTM32F407xx -DUSE_HAL_DRIVER -DSTM32F407xx-o ../../output/malloc.o -MD)
 I (..\..\Drivers\BSP\.\MALLOC\malloc.h)(0x677DDF7D)
@@ -1806,7 +1806,7 @@ I (..\..\Drivers\BSP\.\SHA256\sha256.h)(0x677E1A03)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x603507D0)
 I (C:\Keil_v5\ARM\ARMCLANG\include\string.h)(0x603507D0)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x603507D4)
-I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x677240CC)
+I (..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h)(0x68E77836)
 I (C:\Keil_v5\ARM\ARMCLANG\include\ctype.h)(0x603507B6)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x603507D0)
 F (..\..\readme.txt)(0x64ACF40E)()

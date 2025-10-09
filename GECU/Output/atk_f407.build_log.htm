@@ -27,23 +27,10 @@ Project File Date:  09/30/2025
 <h2>Output:</h2>
 *** Using Compiler 'V6.16', folder: 'C:\Keil_v5\ARM\ARMCLANG\Bin'
 Build target 'LED'
-../../User/main.c(81): warning: incompatible pointer types passing 'unsigned char *[33]' to parameter of type 'unsigned char *' [-Wincompatible-pointer-types]
-    generate_random_key(PQGE, 16);
-                        ^~~~
-../../User/main.c(39): note: passing argument to parameter 'key' here
-void generate_random_key(unsigned char* key, int byte_length); // <D0><C2><D4><F6>: <CB><E6><BB><FA><C3><DC>Կ<C9><FA><B3>ɺ<AF><CA><FD><C9><F9><C3><F7>
-                                        ^
-../../User/main.c(82): warning: format specifies type 'char *' but the argument has type 'unsigned char **' [-Wformat]
-    printf("Generated PQGE: %s\n", PQGE);
-                            ~~     ^~~~
-../../User/main.c(299): warning: format specifies type 'char *' but the argument has type 'unsigned char **' [-Wformat]
-                        printf("  Simulating: Sending PQGE (%s) to %s.\n", PQGE, ecu_ids[current_ecu_index]);
-                                                            ~~             ^~~~
-3 warnings generated.
 compiling main.c...
 linking...
-Program Size: Code=35834 RO-data=2514 RW-data=76 ZI-data=36172  
-"..\..\Output\atk_f407.axf" - 0 Error(s), 3 Warning(s).
+Program Size: Code=36146 RO-data=2566 RW-data=76 ZI-data=36076  
+"..\..\Output\atk_f407.axf" - 0 Error(s), 0 Warning(s).
 
 <h2>Software Packages used:</h2>
 
