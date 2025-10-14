@@ -61,6 +61,7 @@
 ..\..\output\can.o: ..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_pcd_ex.h
 ..\..\output\can.o: ..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_hcd.h
 ..\..\output\can.o: ..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_mmc.h
+..\..\output\can.o: ..\..\Drivers\./BSP/CAN/can_config.h
 ..\..\output\can.o: ..\..\Drivers\./BSP/LED/led.h
 ..\..\output\can.o: ..\..\Drivers\./SYSTEM/delay/delay.h
 ..\..\output\can.o: ..\..\Drivers\./SYSTEM/usart/usart.h

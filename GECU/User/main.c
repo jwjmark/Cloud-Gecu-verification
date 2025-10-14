@@ -12,6 +12,7 @@
 #include "./CJSON/cJSON.h"  
 #include "./BYTE2STRING/byte2string.h"
 #include "./CAN/can.h" 
+#include "./CAN/can_config.h"
 #include "./MESSAGECHECK/messageCheck.h"
 #include "./KEY/key.h" 
 
@@ -37,11 +38,16 @@ const char* ecu_ids[NUM_ECUS] = {
 const char* GID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 char PW[33] ={0};
 char PQCG[33] = {0};
+int Key_flag = 0;
 
 
 
 unsigned char PQGE[33] = {0}; // 用于ECU认证的预共享密钥
 unsigned char QGC[33] = {0};
+char Key_1[33] = {0};
+char Key_2[33] = {0};
+char Key_3[33] = {0};
+char Key_4[33] = {0};
 
 
 
@@ -95,9 +101,25 @@ int main(void)
 	usart3_init(115200);
 	key_init();
 	can_init(CAN_SJW_1TQ, CAN_BS2_6TQ, CAN_BS1_7TQ, 6, CAN_MODE_NORMAL);  /* CAN初始化, 正常模式, 波特率500Kbps */
-	esp8266_init();
+
     // 初始化随机数种子
     srand(256);
+    
+    
+    strncpy(Key_1, QRNG_number[Key_flag]+48, 16);
+    strncpy(Key_2, QRNG_number[Key_flag]+64, 16);
+    strncpy(Key_3, QRNG_number[Key_flag]+80, 16);
+    strncpy(Key_4, QRNG_number[Key_flag]+96, 16);
+    Key_flag = Key_flag + 96;
+    
+    
+    can_send_msg(CAN_ID_KEY_DIST_ECU1,(unsigned char *)Key_1,strlen(Key_1));
+    can_send_msg(CAN_ID_KEY_DIST_ECU2,(unsigned char *)Key_2,strlen(Key_2));
+    can_send_msg(CAN_ID_KEY_DIST_ECU3,(unsigned char *)Key_3,strlen(Key_3));
+    can_send_msg(CAN_ID_KEY_DIST_ECU4,(unsigned char *)Key_4,strlen(Key_4));
+
+    
+    esp8266_init();
 
 
 
@@ -402,6 +424,7 @@ int main(void)
                     if (cJSON_IsString(status) && (strcmp(status->valuestring, "SUCCESS") == 0))
                     {
                         printf("  ECU authentication SUCCESS.\n");
+                        
                         printf("  Simulating: Sending ECU会话密钥PQGE (%s) to %s.\n", PQGE, ecu_ids[current_ecu_index]);
 
                         
@@ -418,7 +441,20 @@ int main(void)
 
                 case STATE_ALL_ECUS_AUTH_SUCCESS:
                     // 所有ECU认证成功后的逻辑，例如进入正常工作模式
+                    send_gateway_status(SYS_STATE_AUTH_DONE);
+                
                     printf("向各ECU发送对应会话密钥\n");
+                    delay_ms(100);
+                    
+
+                    can_send_msg(CAN_ID_KEY_DIST_ECU1,(unsigned char *)Key_1,strlen(Key_1));
+                    can_send_msg(CAN_ID_KEY_DIST_ECU2,(unsigned char *)Key_2,strlen(Key_2));
+                    can_send_msg(CAN_ID_KEY_DIST_ECU3,(unsigned char *)Key_3,strlen(Key_3));
+                    can_send_msg(CAN_ID_KEY_DIST_ECU4,(unsigned char *)Key_4,strlen(Key_4));
+                    
+                    delay_ms(100);
+                    send_gateway_status(SYS_STATE_KEY_READY);
+                    
                     // 这里可以添加一个delay或者其他逻辑，避免CPU空转
                     while(1);
                     break;

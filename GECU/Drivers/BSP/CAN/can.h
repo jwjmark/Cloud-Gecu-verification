@@ -40,6 +40,7 @@
 #define CAN_TX_GPIO_PIN                 GPIO_PIN_12
 #define CAN_TX_GPIO_CLK_ENABLE()        do{ __HAL_RCC_GPIOA_CLK_ENABLE(); }while(0)     /* PA口时钟使能 */
 
+
 /******************************************************************************************/
 
 /* CAN接收RX0中断使能 */
@@ -52,6 +53,7 @@ uint8_t can_send_msg(uint32_t id, uint8_t *msg, uint8_t len);                   
 uint8_t can_init(uint32_t tsjw,uint32_t tbs2,uint32_t tbs1,uint16_t brp,uint32_t mode); /* CAN初始化 */
 void ProcessData(uint8_t* data, uint16_t length, char* str_received);
 void StringToByte(char* source, uint8_t* dest, int sourceLen);
+void send_gateway_status(uint8_t status_code);
 #endif
 
 

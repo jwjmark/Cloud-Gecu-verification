@@ -1,23 +1,3 @@
-/**
- ****************************************************************************************************
- * @file        main.c
- * @author      正点原子团队(ALIENTEK)
- * @version     V1.0
- * @date        2020-04-24
- * @brief       CAN通信 实验
- * @license     Copyright (c) 2020-2032, 广州市星翼电子科技有限公司
- ****************************************************************************************************
- * @attention
- *
- * 实验平台:正点原子 STM32F103开发板
- * 在线视频:www.yuanzige.com
- * 技术论坛:www.openedv.com
- * 公司网址:www.alientek.com
- * 购买地址:openedv.taobao.com
- *
- ****************************************************************************************************
- */
-
 #include <string.h>
 #include "./SYSTEM/sys/sys.h"
 #include "./SYSTEM/usart/usart.h"
@@ -27,6 +7,7 @@
 #include "./BSP/LCD/lcd.h"
 #include "./BSP/KEY/key.h"
 #include "./BSP/CAN/can.h"
+#include "./BSP/CAN/can_config.h"
 #include "./jSON/cJSON.h"
 #include "./jSON/json_handle.h"
 
@@ -42,6 +23,12 @@ cmox_kmac_handle_t Kmac_Ctx;
 cmox_ctr_handle_t Ctr_Ctx;
 
 __IO TestStatus glob_status = FAILED;
+
+// 全局变量
+volatile EcuState g_ecu_state = STATE_WAIT_AUTH_DONE;
+uint8_t session_key[16];          // 用于存储从GECU接收的16字节会话密钥
+
+
 
 extern uint8_t IRQflag;      // 数据接收完成标志位
 extern uint8_t data_buffer;  // 数据缓冲区
@@ -104,7 +91,6 @@ const uint8_t Plaintext[4][8] =
 };
 //809 848 1087 1088 1264
 
-const uint32_t TX1_ID = 0x329;//809
 //const uint32_t testID[5]={0x350, 0x329, 0x43F, 0x440, 0x4F0};
 
 //, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB
@@ -186,6 +172,28 @@ int main(void)
    */
    
    
+   while(1)
+   {
+       ecu_handle_can_receive();
+//       switch (g_ecu_state)
+//       {
+//           case STATE_WAIT_AUTH_DONE:
+//               delay_ms(100);
+//           break;
+//           
+//           case STATE_SECURE_MODE:
+//               delay_ms(100);
+//           break;
+//           
+//           case STATE_ERROR:
+//               delay_ms(100);
+//           break;
+//       }
+       delay_ms(10);
+           
+           
+   }
+   
 //   
 //    unsigned char buffer[16];
 //    memset(buffer, 1, 16);
@@ -254,7 +262,7 @@ int main(void)
     //                printf("发送数据长度：%d\n",jsonstirnglen);
                 for(int times=0; times <4; times++)
                 {
-                    res = can_send_msg(TX1_ID,(unsigned char *)jsonString, jsonstirnglen);
+                    res = can_send_msg(CAN_ID_ECU3,(unsigned char *)jsonString, jsonstirnglen);
                     HAL_Delay(2500);
                 }
                 cJSON_Delete(object);object = NULL;

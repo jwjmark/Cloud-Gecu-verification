@@ -27,34 +27,14 @@ Project File Date:  12/19/2024
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 7 (build 960)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'F1_Crypto_Demo'
-compiling main.c...
-..\..\User\main.c(146): warning:  #550-D: variable "retval"  was set but never used
-    cmox_cipher_retval_t retval;
-..\..\User\main.c(149): warning:  #177-D: variable "cipher_ctx"  was declared but never referenced
-    cmox_cipher_handle_t *cipher_ctx;
-..\..\User\main.c(151): warning:  #177-D: variable "index"  was declared but never referenced
-    uint32_t index;
-..\..\User\main.c(159): warning:  #177-D: variable "i"  was declared but never referenced
-      uint8_t i = 0, t = 0;
-..\..\User\main.c(159): warning:  #177-D: variable "t"  was declared but never referenced
-      uint8_t i = 0, t = 0;
-..\..\User\main.c(164): warning:  #177-D: variable "rxbuf"  was declared but never referenced
-      uint8_t rxbuf[8]={1,1,1,1,1,1,1,1};
-..\..\User\main.c(165): warning:  #177-D: variable "rxlen"  was declared but never referenced
-      uint8_t rxlen = 0;
-..\..\User\main.c(166): warning:  #550-D: variable "res"  was set but never used
-      uint8_t res = 0;
-..\..\User\main.c(167): warning:  #177-D: variable "mode"  was declared but never referenced
-      uint8_t mode = 0; /* CAN工作模式: 0,普通模式; 1,环回模式 */
-..\..\User\main.c(288): warning:  #177-D: function "SystemClock_Config"  was declared but never referenced
-  void SystemClock_Config(void)
-..\..\User\main.c(324): warning:  #177-D: function "Error_Handler"  was declared but never referenced
-  static void Error_Handler(void)
-..\..\User\main.c: 11 warnings, 0 errors
+compiling can.c...
+..\..\Drivers\BSP\CAN\can.c(231): warning:  #1166-D: returning pointer to local variable
+      return str_received;  // 返回字符串指针
+..\..\Drivers\BSP\CAN\can.c: 1 warning, 0 errors
 linking...
-Program Size: Code=42376 RO-data=1712 RW-data=568 ZI-data=2576  
+Program Size: Code=15408 RO-data=660 RW-data=552 ZI-data=3288  
 FromELF: creating hex file...
-"..\..\Output\F1_Crypto_Demo.axf" - 0 Error(s), 11 Warning(s).
+"..\..\Output\F1_Crypto_Demo.axf" - 0 Error(s), 1 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -67,7 +47,7 @@ Package Vendor: Keil
   C:\Users\40827\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include
 
 <h2>Collection of Component Files used:</h2>
-Build Time Elapsed:  00:00:03
+Build Time Elapsed:  00:00:02
 </pre>
 </body>
 </html>

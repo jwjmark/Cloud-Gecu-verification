@@ -1,32 +1,7 @@
-/**
- ****************************************************************************************************
- * @file        can.c
- * @author      正点原子团队(ALIENTEK)
- * @version     V1.0
- * @date        2020-04-24
- * @brief       CAN 驱动代码
- * @license     Copyright (c) 2020-2032, 广州市星翼电子科技有限公司
- ****************************************************************************************************
- * @attention
- *
- * 实验平台:正点原子 STM32F103开发板
- * 在线视频:www.yuanzige.com
- * 技术论坛:www.openedv.com
- * 公司网址:www.alientek.com
- * 购买地址:openedv.taobao.com
- *
- * 修改说明
- * V1.0 20210717
- * 修改初始化参数，改用过滤器0关联到FIFO0
- * V1.0 20200424
- * 第一次发布
- *
- ****************************************************************************************************
- */
- 
 #include <string.h>
 #include <stdlib.h>
 #include "./BSP/CAN/can.h"
+#include "./BSP/CAN/can_config.h"
 #include "./BSP/LED/led.h"
 #include "./SYSTEM/delay/delay.h"
 #include "./SYSTEM/usart/usart.h"
@@ -38,6 +13,11 @@
 #define START_FRAME 0x10      // 启动帧标识
 #define DATA_FRAME 0x21       // 数据帧标识
 #define END_FRAME 0x22        // 结束帧标识
+
+extern volatile EcuState g_ecu_state;
+extern uint8_t session_key[32];
+
+
 uint8_t data_buffer[MAX_DATA_BUFFER_SIZE];  // 数据缓冲区
 uint16_t buffer_index = 0;                 // 当前数据写入位置
 volatile uint8_t IRQflag = 0;                     // 接收状态标志
@@ -163,16 +143,16 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
     IRQflag = 0;
 
     uint8_t rxbuf[8];
-    uint32_t id = 0x012;
+    uint32_t id = 0x104;
     can_receive_msg(id, rxbuf);
+    printf("id %x\n", id);
+    printf("\n 111111111111111111111111111111 \n");
 
     uint8_t frame_type = rxbuf[0];  // 提取帧类型标识符
     uint8_t* frame_data = &rxbuf[1]; // 提取数据部分
-    for (int i = 0; i < 8; i++) {
-    printf("rxbuf[%d] = 0x%02X  ", i, rxbuf[i]);
-    }
+
     static uint8_t data_len =  7 ;    // 数据长度（去掉标识符）
-    printf("data_len = %d",data_len);
+    printf("data_len = %d \n",data_len);
        switch (frame_type) {
             case SINGLE_FRAME:
                 // 单帧直接处理
@@ -221,21 +201,6 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
                 // 未知帧类型，忽略
                 break;
         }
-    
-//  can_receive_msg(id, rxbuf);
-//  printf("id:%d\r\n", g_canx_rxheader.StdId);
-//  printf("ide:%d\r\n", g_canx_rxheader.IDE);
-//  printf("rtr:%d\r\n", g_canx_rxheader.RTR);
-//  printf("len:%d\r\n", g_canx_rxheader.DLC);
-
-//  printf("rxbuf[0]:%d\r\n", rxbuf[0]);
-//  printf("rxbuf[1]:%d\r\n", rxbuf[1]);
-//  printf("rxbuf[2]:%d\r\n", rxbuf[2]);
-//  printf("rxbuf[3]:%d\r\n", rxbuf[3]);
-//  printf("rxbuf[4]:%d\r\n", rxbuf[4]);
-//  printf("rxbuf[5]:%d\r\n", rxbuf[5]);
-//  printf("rxbuf[6]:%d\r\n", rxbuf[6]);
-//  printf("rxbuf[7]:%d\r\n", rxbuf[7]);
     
 }
 
@@ -382,4 +347,94 @@ uint8_t can_receive_msg(uint32_t id, uint8_t *buf)
 
   return g_canx_rxheader.DLC;
 
+}
+
+/**
+ * @brief 核心函数：处理CAN总线接收到的消息
+ */
+void ecu_handle_can_receive(void)
+{
+    uint8_t rxlen = 0;
+    uint32_t rx_id = MY_ECU_KEY_ID;
+    uint8_t *rxbuf;
+    
+    rxlen = can_receive_msg(rx_id, rxbuf); /* CAN ID = 0X12, 接收数据查询 */
+
+
+    // 尝试从CAN总线读取一条消息
+    if (rxlen)
+    {
+        uint8_t frame_type = rxbuf[0];
+
+        // --- 1. 处理网关状态广播消息 ---
+        if (rx_id == CAN_ID_GATEWAY_STATUS)
+        {
+            if (frame_type == SINGLE_FRAME && sizeof(rxbuf) == 2)
+            {
+                uint8_t status_code = rxbuf[1];
+                if (status_code == SYS_STATE_AUTH_DONE && g_ecu_state == STATE_WAIT_AUTH_DONE) {
+                    printf("[INFO] Received AUTH_DONE broadcast. State -> STATE_WAIT_KEY_START\n");
+                } else if (status_code == SYS_STATE_KEY_READY && g_ecu_state == STATE_SECURE_MODE) {
+                    printf("[INFO] Received KEY_READY broadcast. System is fully operational.\n");
+                }
+            }
+        }
+        // --- 2. 处理密钥分发消息 (多帧) ---
+        else if (rx_id == MY_ECU_KEY_ID)
+        {
+            uint8_t* frame_data = &rxbuf[1]; // 提取数据部分
+
+            static uint8_t data_len =  7 ;    // 数据长度（去掉标识符）
+            switch (frame_type) {
+                case SINGLE_FRAME:
+                    // 单帧直接处理
+                    memcpy(data_buffer, frame_data, data_len);
+                    buffer_index = data_len;
+                    IRQflag = 1;  // 结束接收
+                    printf("IRQflag标志位为：%d:",IRQflag);
+                    ProcessData(data_buffer, buffer_index);  // 调用数据处理函数
+                    printf("单帧接收");
+                break;
+
+                case START_FRAME:
+                    // 启动帧，初始化缓冲区
+                    memset(data_buffer, 0, MAX_DATA_BUFFER_SIZE);
+                    buffer_index = 0;
+                    memcpy(&data_buffer[buffer_index], frame_data, data_len);
+                    buffer_index += data_len;
+                    IRQflag = 0;  // 开始接收多帧
+                    printf("启动帧接收");
+                break;
+
+                case DATA_FRAME:
+                    // 数据帧，累加到缓冲区
+                    if (buffer_index + data_len <= MAX_DATA_BUFFER_SIZE) {
+                        memcpy(&data_buffer[buffer_index], frame_data, data_len);
+                        buffer_index += data_len;
+                        printf("数据帧接收");
+                    }
+                break;
+
+                case END_FRAME:
+                    // 结束帧，完成接收
+                    if (buffer_index + data_len <= MAX_DATA_BUFFER_SIZE) {
+                        memcpy(&data_buffer[buffer_index], frame_data, data_len);
+                        for (int i = 0; i < 16; i++) {
+                            session_key[i] = data_buffer[i];
+                            printf("data_buffer[%d] = 0x%02X\n", i, session_key[i]);
+                        }
+                        printf("session key: %s", session_key);
+                        buffer_index += data_len;
+                        IRQflag = 1;  // 结束接收
+                        printf("IRQflag标志位为：%d:\n",IRQflag);
+                        printf("结束帧接收\n");
+                    }
+                break;
+                
+                default:
+                    // 在其他状态下收到密钥消息，可能是一个重发，可以忽略或记录
+                    break;
+            }
+        }
+    }
 }

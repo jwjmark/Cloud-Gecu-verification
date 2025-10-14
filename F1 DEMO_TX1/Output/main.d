@@ -69,6 +69,7 @@
 ..\..\output\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 ..\..\output\main.o: ..\..\Drivers\./BSP/KEY/key.h
 ..\..\output\main.o: ..\..\Drivers\./BSP/CAN/can.h
+..\..\output\main.o: ..\..\Drivers\./BSP/CAN/can_config.h
 ..\..\output\main.o: ..\..\Drivers\./jSON/cJSON.h
 ..\..\output\main.o: ..\..\Drivers\./jSON/json_handle.h
 ..\..\output\main.o: ..\..\User\main.h
