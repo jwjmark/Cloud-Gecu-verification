@@ -1,8 +1,9 @@
 Dependencies for Project 'F1_Crypto_Demo', Target 'F1_Crypto_Demo': (DO NOT MODIFY !)
 CompilerVersion: 5060960::V5.06 update 7 (build 960)::.\ARMCC
 F (..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Source\Templates\arm\startup_stm32f103xe.s)(0x64ABB3A8)(--cpu Cortex-M3 -g --apcs=interwork -IC:\Users\40827\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include--pd "__UVISION_VERSION SETA 536" --pd "STM32F10X_HD SETA 1"--list ..\..\output\startup_stm32f103xe.lst --xref -o ..\..\output\startup_stm32f103xe.o --depend ..\..\output\startup_stm32f103xe.d)
-F (..\..\User\main.c)(0x68EE1527)(--c99 -c --cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections -I ..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include -I ..\..\Drivers\STM32F1xx_HAL_Driver\Inc -I ..\..\Drivers\CMSIS\Include -I ..\..\Drivers\ -I ..\..\User -I ..\..\Middlewares -I ..\..\jSON-IC:\Users\40827\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include-D__UVISION_VERSION="536" -DSTM32F10X_HD -DUSE_HAL_DRIVER -DSTM32F103xE-o ..\..\output\main.o --omf_browse ..\..\output\main.crf --depend ..\..\output\main.d)
+F (..\..\User\main.c)(0x68EE59BE)(--c99 -c --cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections -I ..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include -I ..\..\Drivers\STM32F1xx_HAL_Driver\Inc -I ..\..\Drivers\CMSIS\Include -I ..\..\Drivers\ -I ..\..\User -I ..\..\Middlewares -I ..\..\jSON-IC:\Users\40827\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include-D__UVISION_VERSION="536" -DSTM32F10X_HD -DUSE_HAL_DRIVER -DSTM32F103xE-o ..\..\output\main.o --omf_browse ..\..\output\main.crf --depend ..\..\output\main.d)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x6025237E)
+I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x60252374)
 I (..\..\Drivers\./SYSTEM/sys/sys.h)(0x64ABB3A8)
 I (..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include\stm32f1xx.h)(0x64ABB3A8)
 I (..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include\stm32f103xe.h)(0x64ABB3A8)
@@ -68,10 +69,9 @@ I (..\..\Middlewares\./USMART/usmart.h)(0x64ABB3A8)
 I (..\..\Middlewares\./USMART/usmart_port.h)(0x64ABB3A8)
 I (..\..\Drivers\./BSP/LED/led.h)(0x64ABB3A8)
 I (..\..\Drivers\./BSP/LCD/lcd.h)(0x64ABB3A8)
-I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x60252374)
 I (..\..\Drivers\./BSP/KEY/key.h)(0x64ABB3A8)
-I (..\..\Drivers\./BSP/CAN/can.h)(0x68EE134C)
-I (..\..\Drivers\./BSP/CAN/can_config.h)(0x68EDFC71)
+I (..\..\Drivers\./BSP/CAN/can.h)(0x68EE551D)
+I (..\..\Drivers\./BSP/CAN/can_config.h)(0x68EE4496)
 I (..\..\Drivers\./jSON/cJSON.h)(0x670F700E)
 I (..\..\Drivers\./jSON/json_handle.h)(0x6724CED4)
 I (..\..\User\main.h)(0x6694DF7A)
@@ -1545,10 +1545,10 @@ I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_pcd_ex.h)(0x64ABB3A8)
 I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_hcd.h)(0x64ABB3A8)
 I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_mmc.h)(0x64ABB3A8)
 I (..\..\Drivers\./SYSTEM/delay/delay.h)(0x64ABB3A8)
-F (..\..\Drivers\BSP\CAN\can.c)(0x68EE1739)(--c99 -c --cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections -I ..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include -I ..\..\Drivers\STM32F1xx_HAL_Driver\Inc -I ..\..\Drivers\CMSIS\Include -I ..\..\Drivers\ -I ..\..\User -I ..\..\Middlewares -I ..\..\jSON-IC:\Users\40827\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include-D__UVISION_VERSION="536" -DSTM32F10X_HD -DUSE_HAL_DRIVER -DSTM32F103xE-o ..\..\output\can.o --omf_browse ..\..\output\can.crf --depend ..\..\output\can.d)
+F (..\..\Drivers\BSP\CAN\can.c)(0x68EE58F5)(--c99 -c --cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections -I ..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include -I ..\..\Drivers\STM32F1xx_HAL_Driver\Inc -I ..\..\Drivers\CMSIS\Include -I ..\..\Drivers\ -I ..\..\User -I ..\..\Middlewares -I ..\..\jSON-IC:\Users\40827\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include-D__UVISION_VERSION="536" -DSTM32F10X_HD -DUSE_HAL_DRIVER -DSTM32F103xE-o ..\..\output\can.o --omf_browse ..\..\output\can.crf --depend ..\..\output\can.d)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x6025237E)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x60252374)
-I (..\..\Drivers\./BSP/CAN/can.h)(0x68EE134C)
+I (..\..\Drivers\./BSP/CAN/can.h)(0x68EE551D)
 I (..\..\Drivers\./SYSTEM/sys/sys.h)(0x64ABB3A8)
 I (..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include\stm32f1xx.h)(0x64ABB3A8)
 I (..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include\stm32f103xe.h)(0x64ABB3A8)
@@ -1607,7 +1607,7 @@ I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_ll_usb.h)(0x64ABB3A8)
 I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_pcd_ex.h)(0x64ABB3A8)
 I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_hcd.h)(0x64ABB3A8)
 I (..\..\Drivers\STM32F1xx_HAL_Driver\Inc\stm32f1xx_hal_mmc.h)(0x64ABB3A8)
-I (..\..\Drivers\./BSP/CAN/can_config.h)(0x68EDFC71)
+I (..\..\Drivers\./BSP/CAN/can_config.h)(0x68EE4496)
 I (..\..\Drivers\./BSP/LED/led.h)(0x64ABB3A8)
 I (..\..\Drivers\./SYSTEM/delay/delay.h)(0x64ABB3A8)
 I (..\..\Drivers\./SYSTEM/usart/usart.h)(0x64ABB3A8)
@@ -1741,7 +1741,7 @@ I (..\..\Drivers\./SYSTEM/usart/usart.h)(0x64ABB3A8)
 I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x60252374)
 I (..\..\Middlewares\./USMART/usmart_str.h)(0x64ABB3A8)
 I (..\..\Drivers\./SYSTEM/delay/delay.h)(0x64ABB3A8)
-I (..\..\Drivers\./BSP/CAN/can.h)(0x68EE134C)
+I (..\..\Drivers\./BSP/CAN/can.h)(0x68EE551D)
 F (..\..\Middlewares\USMART\usmart_port.c)(0x64ABB3A8)(--c99 -c --cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections -I ..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include -I ..\..\Drivers\STM32F1xx_HAL_Driver\Inc -I ..\..\Drivers\CMSIS\Include -I ..\..\Drivers\ -I ..\..\User -I ..\..\Middlewares -I ..\..\jSON-IC:\Users\40827\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include-D__UVISION_VERSION="536" -DSTM32F10X_HD -DUSE_HAL_DRIVER -DSTM32F103xE-o ..\..\output\usmart_port.o --omf_browse ..\..\output\usmart_port.crf --depend ..\..\output\usmart_port.d)
 I (..\..\Middlewares\./USMART/usmart.h)(0x64ABB3A8)
 I (..\..\Middlewares\./USMART/usmart_port.h)(0x64ABB3A8)

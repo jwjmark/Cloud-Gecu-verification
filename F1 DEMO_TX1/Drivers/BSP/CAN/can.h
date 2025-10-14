@@ -40,9 +40,9 @@
 #define CAN_TX_GPIO_CLK_ENABLE()        do{ __HAL_RCC_GPIOA_CLK_ENABLE(); }while(0)   /* PA口时钟使能 */
 
 
-#define MY_ECU_TARGET_ID    TARGET_ECU3
-#define MY_ECU_KEY_ID       CAN_ID_KEY_DIST_ECU3
-#define MY_ECU_ALERT_ID     CAN_ID_ECU3_ALERT
+#define MY_ECU_TARGET_ID    TARGET_ECU1
+#define MY_ECU_KEY_ID       CAN_ID_KEY_DIST_ECU1
+#define MY_ECU_ALERT_ID     CAN_ID_ECU1_ALERT
 
 // ECU 运行状态机
 typedef enum {

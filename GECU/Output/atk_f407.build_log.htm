@@ -27,7 +27,40 @@ Project File Date:  09/30/2025
 <h2>Output:</h2>
 *** Using Compiler 'V6.16', folder: 'C:\Keil_v5\ARM\ARMCLANG\Bin'
 Build target 'LED'
-"..\..\Output\atk_f407.axf" - 0 Error(s), 0 Warning(s).
+../../Drivers/BSP/CAN/can.c(163): warning: illegal character encoding in string literal [-Winvalid-source-encoding]
+                printf("<B5><A5>֡<BD><D3><CA><D5>%s\n",data_buffer);
+                        ^~~~~~~~~~~~~~~~~~~~~~~~
+../../Drivers/BSP/CAN/can.c(274): warning: passing 'uint8_t *' (aka 'unsigned char *') to parameter of type 'char *' converts between pointers to integer types where one is of the unique plain 'char' type and the other is not [-Wpointer-sign]
+    StringToByte(data, str_received, length);
+                 ^~~~
+../../Drivers/BSP/CAN/can.c(235): note: passing argument to parameter 'source' here
+void StringToByte(char* source, uint8_t* dest, int sourceLen)
+                        ^
+../../Drivers/BSP/CAN/can.c(274): warning: passing 'char *' to parameter of type 'uint8_t *' (aka 'unsigned char *') converts between pointers to integer types where one is of the unique plain 'char' type and the other is not [-Wpointer-sign]
+    StringToByte(data, str_received, length);
+                       ^~~~~~~~~~~~
+../../Drivers/BSP/CAN/can.c(235): note: passing argument to parameter 'dest' here
+void StringToByte(char* source, uint8_t* dest, int sourceLen)
+                                         ^
+3 warnings generated.
+compiling can.c...
+../../User/main.c(117): warning: illegal character encoding in string literal [-Winvalid-source-encoding]
+                    printf("<CF><F2><B8><F7>ECU<B7><A2><CB>Ͷ<D4>Ӧ<BB>Ự<C3><DC>Կ\n");
+                            ^~~~~~~~~~~~~~~~   ~~~~~~~~~~~~ ~~~~ ~~~~ ~~~~~~~~
+../../User/main.c(439): warning: illegal character encoding in string literal [-Winvalid-source-encoding]
+                        printf("  Simulating: Sending ECU<BB>Ự<C3><DC>ԿPQGE (%s) to %s.\n", PQGE, ecu_ids[current_ecu_index]);
+                                                         ^~~~ ~~~~~~~~
+../../User/main.c(457): warning: illegal character encoding in string literal [-Winvalid-source-encoding]
+                    printf("<CF><F2><B8><F7>ECU<B7><A2><CB>Ͷ<D4>Ӧ<BB>Ự<C3><DC>Կ\n");
+                            ^~~~~~~~~~~~~~~~   ~~~~~~~~~~~~ ~~~~ ~~~~ ~~~~~~~~
+../../User/main.c(279): warning: 'strncpy' size argument is too large; destination buffer has size 17, but size argument is 64 [-Wfortify-source]
+                        strncpy(Mix1, result, 64);  // <B8><B4><D6><C6><D7><EE><B6><E0> 64 <B8><F6><D7>ַ<FB><A3><AC>ȷ<B1><A3><C1><F4>һ<B8><F6>λ<D6>ø<F8><D6><D5>ֹ<B7><FB>
+                        ^
+4 warnings generated.
+compiling main.c...
+linking...
+Program Size: Code=37484 RO-data=3616 RW-data=84 ZI-data=36300  
+"..\..\Output\atk_f407.axf" - 0 Error(s), 7 Warning(s).
 
 <h2>Software Packages used:</h2>
 

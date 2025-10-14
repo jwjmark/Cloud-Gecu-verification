@@ -21,6 +21,7 @@ extern uint8_t session_key[32];
 uint8_t data_buffer[MAX_DATA_BUFFER_SIZE];  // 数据缓冲区
 uint16_t buffer_index = 0;                 // 当前数据写入位置
 volatile uint8_t IRQflag = 0;                     // 接收状态标志
+uint32_t rx_id = MY_ECU_KEY_ID;
 
 
 CAN_HandleTypeDef   g_canx_handler;     /* CANx句柄 */
@@ -355,15 +356,15 @@ uint8_t can_receive_msg(uint32_t id, uint8_t *buf)
 void ecu_handle_can_receive(void)
 {
     uint8_t rxlen = 0;
-    uint32_t rx_id = MY_ECU_KEY_ID;
-    uint8_t *rxbuf;
-    
-    rxlen = can_receive_msg(rx_id, rxbuf); /* CAN ID = 0X12, 接收数据查询 */
 
+    uint8_t rxbuf[8] = {0};
+     rxlen = can_receive_msg(rx_id, rxbuf);
 
-    // 尝试从CAN总线读取一条消息
-    if (rxlen)
+    if (rxlen > 0)
     {
+        // 如果能看到这条打印，说明接收成功了！
+        printf("Success: ecu_handle_can_receive() got a message, length = %d\r\n", rxlen);
+
         uint8_t frame_type = rxbuf[0];
 
         // --- 1. 处理网关状态广播消息 ---
@@ -374,14 +375,17 @@ void ecu_handle_can_receive(void)
                 uint8_t status_code = rxbuf[1];
                 if (status_code == SYS_STATE_AUTH_DONE && g_ecu_state == STATE_WAIT_AUTH_DONE) {
                     printf("[INFO] Received AUTH_DONE broadcast. State -> STATE_WAIT_KEY_START\n");
+                    
                 } else if (status_code == SYS_STATE_KEY_READY && g_ecu_state == STATE_SECURE_MODE) {
                     printf("[INFO] Received KEY_READY broadcast. System is fully operational.\n");
                 }
+
             }
         }
         // --- 2. 处理密钥分发消息 (多帧) ---
         else if (rx_id == MY_ECU_KEY_ID)
         {
+
             uint8_t* frame_data = &rxbuf[1]; // 提取数据部分
 
             static uint8_t data_len =  7 ;    // 数据长度（去掉标识符）
@@ -391,9 +395,7 @@ void ecu_handle_can_receive(void)
                     memcpy(data_buffer, frame_data, data_len);
                     buffer_index = data_len;
                     IRQflag = 1;  // 结束接收
-                    printf("IRQflag标志位为：%d:",IRQflag);
                     ProcessData(data_buffer, buffer_index);  // 调用数据处理函数
-                    printf("单帧接收");
                 break;
 
                 case START_FRAME:
@@ -403,7 +405,6 @@ void ecu_handle_can_receive(void)
                     memcpy(&data_buffer[buffer_index], frame_data, data_len);
                     buffer_index += data_len;
                     IRQflag = 0;  // 开始接收多帧
-                    printf("启动帧接收");
                 break;
 
                 case DATA_FRAME:
@@ -411,7 +412,6 @@ void ecu_handle_can_receive(void)
                     if (buffer_index + data_len <= MAX_DATA_BUFFER_SIZE) {
                         memcpy(&data_buffer[buffer_index], frame_data, data_len);
                         buffer_index += data_len;
-                        printf("数据帧接收");
                     }
                 break;
 
@@ -421,13 +421,11 @@ void ecu_handle_can_receive(void)
                         memcpy(&data_buffer[buffer_index], frame_data, data_len);
                         for (int i = 0; i < 16; i++) {
                             session_key[i] = data_buffer[i];
-                            printf("data_buffer[%d] = 0x%02X\n", i, session_key[i]);
+                            printf("session_key[%d] = 0x%02X\n", i, session_key[i]);
                         }
-                        printf("session key: %s", session_key);
                         buffer_index += data_len;
                         IRQflag = 1;  // 结束接收
-                        printf("IRQflag标志位为：%d:\n",IRQflag);
-                        printf("结束帧接收\n");
+                        g_ecu_state = STATE_SECURE_MODE;
                     }
                 break;
                 

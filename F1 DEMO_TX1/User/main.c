@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h> // 新增: 用于随机数生成
 #include "./SYSTEM/sys/sys.h"
 #include "./SYSTEM/usart/usart.h"
 #include "./SYSTEM/delay/delay.h"
@@ -17,6 +18,10 @@
 
 
 /* Global variables ----------------------------------------------------------*/
+
+#define PLAINTEXT_LEN      6
+#define MAC_LEN            2
+
 /* SM3 context handle */
 cmox_sm3_handle_t sm3_ctx;
 cmox_kmac_handle_t Kmac_Ctx;
@@ -29,66 +34,21 @@ volatile EcuState g_ecu_state = STATE_WAIT_AUTH_DONE;
 uint8_t session_key[16];          // 用于存储从GECU接收的16字节会话密钥
 
 
-
-extern uint8_t IRQflag;      // 数据接收完成标志位
-extern uint8_t data_buffer;  // 数据缓冲区
-extern uint8_t buffer_index; // 当前数据写入位置
+extern volatile uint8_t IRQflag;
+extern uint8_t data_buffer[];
+extern CAN_RxHeaderTypeDef g_canx_rxheader;
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private defines -----------------------------------------------------------*/
-#define CHUNK_SIZE  48u   /* Chunk size (in bytes) when data to hash are processed by chunk */
+#define CHUNK_SIZE  32u   /* Chunk size (in bytes) when data to hash are processed by chunk */
 /* Private macros ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-/** Extract from IETF draft-oscca-cfrg-sm3-02
-  * A.2.  Example 2, From GB/T 32905-2016
 
-   This is example 2 provided by [GBT.32905-2016] to demonstrate hashing
-   of a 512-bit plaintext.
-
-A.2.1.  512-bit Input Message
-
- 61626364 61626364 61626364 61626364 61626364 61626364 61626364 61626364
- 61626364 61626364 61626364 61626364 61626364 61626364 61626364 61626364
-
-...
-
-A.2.3.  Hash Value
-
- debe9ff9 2275b8a1 38604889 c18e5a4d 6fdb70e5 387e5765 293dcba3 9c0c5732
-
-  */
-  
-  
- uint8_t Key_Line[4][16] =
-{
-   {0xe3, 0x10, 0x4d, 0xd3, 0xed, 0x8d, 0x52, 0xd2, 0x50, 0x57, 0x1c, 0xc8, 0xaa, 0x23, 0xf1, 0xbb},
-   {0xfa, 0xc3, 0xff, 0xad, 0x9a, 0xf8, 0x78, 0x7f, 0x72, 0xe4, 0xf7, 0x56, 0x5b, 0x7f, 0x00, 0x00},
-   {0x44, 0x72, 0xb2, 0x48, 0xdd, 0x45, 0x5a, 0x15, 0x1f, 0xb4, 0xf1, 0x5d, 0x09, 0x31, 0x40, 0x90},
-   {0xaf, 0x98, 0xae, 0xb7, 0x38, 0xb9, 0xb1, 0xa5, 0x49, 0xc8, 0xc4, 0x94, 0x36, 0xa4, 0xee, 0x90}
-};
-
-uint8_t KMAC_Key_Line[4][32] =
-{
-    {0x34, 0x6f, 0x63, 0xcf, 0xc1, 0x39, 0x7b, 0xca, 0xd4, 0x64, 0xa8, 0x63, 0x1d, 0x52, 0x39, 0x9e, 
-     0xfe, 0x48, 0x59, 0xa5, 0x6b, 0xa8, 0xae, 0xbf, 0x7f, 0x8a, 0x3d, 0x14, 0x27, 0x0c, 0x17, 0x25},
-    {0x60, 0x55, 0xc4, 0xfa, 0xb1, 0xfe, 0xe2, 0x96, 0x62, 0xb0, 0xe8, 0xfe, 0x77, 0xf2, 0x8e, 0x9f, 
-     0xdf, 0xa2, 0x10, 0x00, 0xc0, 0xdb, 0x07, 0x61, 0x9b, 0xd6, 0xa8, 0x60, 0x3b, 0x13, 0x40, 0xf1},
-    {0x79, 0xbf, 0xd0, 0x9c, 0xb0, 0xf3, 0x34, 0xcb, 0x97, 0xcd, 0x1a, 0x6b, 0xca, 0xad, 0x9a, 0x09, 
-     0xb8, 0x4d, 0x57, 0x76, 0xec, 0xd3, 0xcc, 0x25, 0xf8, 0x16, 0x9a, 0xa4, 0x5c, 0xef, 0x62, 0x68},
-    {0x5d, 0xed, 0xfe, 0xb7, 0x90, 0xad, 0x81, 0x8e, 0x43, 0x4c, 0xee, 0xb8, 0xce, 0x2a, 0xe3, 0x09, 
-     0x25, 0x42, 0x2d, 0x92, 0xf7, 0xc1, 0x14, 0x27, 0x24, 0x34, 0xa4, 0xd7, 0xb7, 0x1b, 0x60, 0x43}
-};
 const uint8_t IV[] =
 {
   0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
 };
-const uint8_t Plaintext[4][8] =
-{
-{0x87, 0xB9, 0x7E, 0x14, 0x12, 0x20, 0x00, 0x14},
-{0xDC, 0xB9, 0x7E, 0x14, 0x12, 0x20, 0x00, 0x14},
-{0x0C, 0xB9, 0x7E, 0x14, 0x12, 0x20, 0x00, 0x14},
-{0x40, 0xB9, 0x7E, 0x14, 0x12, 0x20, 0x00, 0x14}
-};
+uint8_t Plaintext[8];
 //809 848 1087 1088 1264
 
 //const uint32_t testID[5]={0x350, 0x329, 0x43F, 0x440, 0x4F0};
@@ -99,12 +59,13 @@ const uint8_t Expected_Ciphertext[] =
 {
   0xAC, 0x32, 0x36, 0xCB, 0x97, 0x0C
 };
-//, 0x91, 0x36, 0x4C, 0x39, 0x5A, 0x13, 0x42, 0xD1
 
 const uint8_t Expected_Tag[] =
 {
-  0x4E, 0x6C
+  0x51, 0xF0, 0xBE, 0x0C
 };
+
+uint8_t KMAC_Key[32] = {0x42, 0xc9, 0xec, 0x9f, 0xc3, 0xc0, 0x62, 0x5d, 0xe1, 0xc6, 0x86, 0xda, 0xc1, 0xd0, 0x21, 0x28, 0x3a, 0xce, 0x25, 0x2b, 0x16, 0x85, 0xb1, 0xc0, 0x05, 0x79, 0x42, 0xcf, 0x04, 0x83, 0xde, 0x02};
 
 
 const uint8_t Custom_Data[21] = "My Tagged Application";
@@ -118,7 +79,8 @@ uint8_t Computed_Tag[sizeof(Expected_Tag)];
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
-static void Error_Handler(void);
+int create_and_send_secure_packet(uint32_t target_can_id, const uint8_t *payload);
+int receive_and_verify_secure_packet(const uint8_t *packet, uint8_t *decrypted_payload);
 
 /* Functions Definition ------------------------------------------------------*/
 
@@ -136,17 +98,11 @@ int main(void)
   /* Index for piecemeal processing */
   uint32_t index;
    
-    
-    uint8_t Key[16];
-    uint8_t KMAC_Key[32];
-    uint8_t KMAC_tag = 1;
-    memcpy(KMAC_Key, KMAC_Key_Line[0], 32);
+
     
     uint8_t i = 0, t = 0;
     
     int cnt = 0;
-    uint8_t canbuf[]= "abcdefghijklmn";
-    int btest = strlen((char *)canbuf);
     uint8_t rxbuf[8]={1,1,1,1,1,1,1,1};
     uint8_t rxlen = 0;
     uint8_t res = 0;
@@ -162,6 +118,11 @@ int main(void)
 //    lcd_init();                                                          /* 初始化LCD */
 //    key_init();                                                          /* 初始化按键 */
     can_init(CAN_SJW_1TQ, CAN_BS2_8TQ, CAN_BS1_9TQ, 4, CAN_MODE_NORMAL);   /* CAN初始化, 普通模式, 波特率500Kbps */
+    
+    // 初始化随机数种子
+    srand(256);
+    
+    
             
     //memset(canbuf,0,sizeof(canbuf));
 //    res = can_send_msg(0X11, canbuf, 8); /* 发送ID = 0X12, 发送8个字节 */
@@ -171,105 +132,158 @@ int main(void)
    * --------------------------------------------------------------------------
    */
    
+    while(g_ecu_state != STATE_SECURE_MODE)
+    {
+        // 持续调用CAN接收处理函数，直到它接收到密钥并更新g_ecu_state
+        ecu_handle_can_receive();
+        if (IRQflag == 1 && g_ecu_state == STATE_SECURE_MODE) {
+             printf("Session key received. Starting secure communication loop.\n");
+        }
+        delay_ms(20);
+    }
+    
+    
+    // --- 阶段2: 不间断安全通信循环 ---
+    uint32_t message_counter = 0;
+    uint8_t plaintext_payload[PLAINTEXT_LEN];
+    uint8_t decrypted_payload[PLAINTEXT_LEN];
+   
    
    while(1)
-   {
-       ecu_handle_can_receive();
-//       switch (g_ecu_state)
-//       {
-//           case STATE_WAIT_AUTH_DONE:
-//               delay_ms(100);
-//           break;
-//           
-//           case STATE_SECURE_MODE:
-//               delay_ms(100);
-//           break;
-//           
-//           case STATE_ERROR:
-//               delay_ms(100);
-//           break;
-//       }
-       delay_ms(10);
-           
-           
-   }
-   
-//   
-//    unsigned char buffer[16];
-//    memset(buffer, 1, 16);
-//    can_send_msg(0x01, buffer, 16);
-   
-
-  /* Compute directly the ciphertext passing all the needed parameters */
-    while(cnt <= 200){            
-            if (cnt < 200) {
-                memcpy(Key, Key_Line[cnt / 50], 16);  // 按段加载 Key
-            }else if (cnt == 200) {
-                if (KMAC_tag > 3) {
-                    while(1)
-                    {
-                        LED0_TOGGLE();
-                    }
-                }else{
-                    memcpy(KMAC_Key, Key_Line[KMAC_tag], 32);
-                    KMAC_tag++;
-                    cnt = 0;
-                }
-            }
-            for(int j=0; j<4; j++){
-                retval = cmox_cipher_encrypt(CMOX_SM4_CTR_ENC_ALGO,                  /* Use SM4 CTR algorithm */
-                                           Plaintext[j], sizeof(Plaintext[j]),           /* Plaintext to encrypt */
-                                           Key, sizeof(Key),                       /* AES key to use */
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            Plaintext[i] = rand() % 256; // 生成 0-255 之间的随机数
+            printf("0x%02X ", Plaintext[i]);
+        }
+        /* ---------- 发送部分 ---------- */
+        // 准备一个每次都变化的数据包
+        sprintf((char*)plaintext_payload, "ECU%d msg:%ld", MY_ECU_ID, (long)message_counter++);
+        retval = cmox_cipher_encrypt(CMOX_SM4_CTR_ENC_ALGO,                  /* Use SM4 CTR algorithm */
+                                           Plaintext, sizeof(Plaintext),           /* Plaintext to encrypt */
+                                           session_key, sizeof(session_key),                       /* AES key to use */
                                            IV, sizeof(IV),                         /* Initialization vector */
                                            Computed_Ciphertext, &computed_size);   /* Data buffer to receive generated ciphertext */
-                                           
-            //    can_send_msg(0x12, (uint8_t *)Computed_Ciphertext, 8);
-                                           
-                 /* Compute directly the authentication tag passing all the needed parameters */
-                retval = cmox_mac_compute(CMOX_KMAC_128_ALGO,               /* Use KMAC 128 algorithm */
-                                        Plaintext[j], sizeof(Plaintext[j]),         /* Message to authenticate */
-                                        KMAC_Key, sizeof(KMAC_Key),                 /* KMAC Key to use */
-                                        Custom_Data, sizeof(Custom_Data), /* Custom data */
-                                        Computed_Tag,                     /* Data buffer to receive generated authnetication tag */
-                                        sizeof(Expected_Tag),             /* Expected authentication tag size */
-                                        &computed_size);                  /* Generated tag size */
-                                           
-                char str_pdu[sizeof(Computed_Ciphertext) * 2 + 1];  // 2 characters per byte + null terminator
-                for (int i = 0; i < sizeof(Computed_Ciphertext); i++) 
-                {
-                    sprintf(&str_pdu[i * 2], "%02x", Computed_Ciphertext[i]);
-                }
-                str_pdu[sizeof(Computed_Ciphertext) * 2] = '\0';  // Null-terminate the string
-                
-                char str_mac[sizeof(Computed_Tag) * 2 + 1];
-                for (int i = 0; i < sizeof(Computed_Tag); i++) 
-                {
-                    sprintf(&str_mac[i * 2], "%02x", Computed_Tag[i]);
-                }
-                str_mac[sizeof(Computed_Tag) * 2] = '\0';  // Null-terminate the string
-                                           
-                
-                cJSON *object = cJSON_CreateObject();    //创建JSON指针头结点
-
-                cJSON_AddStringToObject(object, "PDU", str_pdu);
-                
-                cJSON_AddStringToObject(object, "MAC", str_mac);
-
-                char *jsonString = cJSON_Print(object);  // 将JSON对象转换为字符串
-                    printf("JSON字符串是什么样的：%s\n",jsonString);
-                
-                int jsonstirnglen= strlen(jsonString);
-    //                printf("发送数据长度：%d\n",jsonstirnglen);
-                for(int times=0; times <4; times++)
-                {
-                    res = can_send_msg(CAN_ID_ECU3,(unsigned char *)jsonString, jsonstirnglen);
-                    HAL_Delay(2500);
-                }
-                cJSON_Delete(object);object = NULL;
-                free(jsonString);
-            }
-            cnt++;
+                                                                                      
+         /* Compute directly the authentication tag passing all the needed parameters */
+        retval = cmox_mac_compute(CMOX_KMAC_128_ALGO,               /* Use KMAC 128 algorithm */
+                                Plaintext, sizeof(Plaintext),         /* Message to authenticate */
+                                KMAC_Key, sizeof(KMAC_Key),       /* KMAC Key to use */
+                                NULL, 0,                             /* Custom data */
+                                Computed_Tag,                     /* Data buffer to receive generated authnetication tag */
+                                sizeof(Expected_Tag),             /* Expected authentication tag size */
+                                &computed_size);                  /* Generated tag size */
+                                   
+        char str_pdu[sizeof(Computed_Ciphertext) * 2 + 1];  // 2 characters per byte + null terminator
+        for (int i = 0; i < sizeof(Computed_Ciphertext); i++) 
+        {
+            sprintf(&str_pdu[i * 2], "%02x", Computed_Ciphertext[i]);
         }
+        str_pdu[sizeof(Computed_Ciphertext) * 2] = '\0';  // Null-terminate the string
+        
+        char str_mac[sizeof(Computed_Tag) * 2 + 1];
+        for (int i = 0; i < sizeof(Computed_Tag); i++) 
+        {
+            sprintf(&str_mac[i * 2], "%02x", Computed_Tag[i]);
+        }
+        str_mac[sizeof(Computed_Tag) * 2] = '\0';  // Null-terminate the string
+                                   
+        
+        cJSON *object = cJSON_CreateObject();    //创建JSON指针头结点
+
+        cJSON_AddStringToObject(object, "PDU", str_pdu);
+        
+        cJSON_AddStringToObject(object, "MAC", str_mac);
+
+        char *jsonString = cJSON_Print(object);  // 将JSON对象转换为字符串
+            printf("JSON字符串是什么样的：%s\n",jsonString);
+        
+        int jsonstirnglen= strlen(jsonString);
+
+        res = can_send_msg(TARGET_ECU_CAN_ID,(unsigned char *)jsonString, jsonstirnglen);
+        HAL_Delay(20);
+
+        cJSON_Delete(object);object = NULL;
+        free(jsonString);
+
+
+        /* ---------- 接收与验证部分 ---------- */
+        // 调用CAN接收处理函数，它会填充data_buffer并设置IRQflag
+        ecu_handle_can_receive(); 
+
+        if(IRQflag == 1) // 如果接收到一包完整的数据
+        {
+            // 判断收到的ID是否是ECU之间的通信ID
+            if (g_canx_rxheader.StdId == MY_ECU_RX_CAN_ID)
+            {
+                printf("<-- Received a secure packet on my CAN ID (0x%lX)\n", (unsigned long)g_canx_rxheader.StdId);
+                
+                cJSON *receivedJson = cJSON_Parse(data_buffer);  // 解析接收到的JSON字符串
+            
+                char *out = cJSON_Print(receivedJson);
+                printf("receivedJson字符串%s\n",out);
+
+                        
+                cJSON *receivedJson1 = cJSON_GetObjectItemCaseSensitive(receivedJson, "PDU");
+                printf("\nPDU:%s\n",receivedJson1->valuestring);
+                cJSON *receivedJson2 = cJSON_GetObjectItemCaseSensitive(receivedJson, "MAC");
+                printf("MAC:%s\n",receivedJson2->valuestring);
+                
+                
+                uint8_t pdu_array[16];    
+                uint8_t mac_array[4];
+                uint8_t pduJson2str[128];
+                uint8_t macJson2str[128];
+
+                //将JSON格式PDU与MAC转化为字符串pduJason2str，macJson2str
+                char* receivedJson1_string = receivedJson1->valuestring;
+                char* receivedJson2_string = receivedJson2->valuestring;
+                
+                int pdustringlen = strlen(receivedJson1_string);
+                int macstringlen = strlen(receivedJson2_string);    
+                memcpy(pduJson2str,receivedJson1_string, pdustringlen+1);
+                memcpy(macJson2str,receivedJson2_string, macstringlen+1);
+                
+                //将字符串pduJason2str与macJson2str转换成字节数组pdu_array、mac_array
+                StringToByte((char*)pduJson2str, pdu_array, pdustringlen);    
+                StringToByte((char*)macJson2str, mac_array, macstringlen);
+                
+                cmox_cipher_decrypt(CMOX_SM4_CTR_DEC_ALGO,                 /* Use SM4 CTR algorithm */
+                                    pdu_array, sizeof(pdu_array),          /* Ciphertext to decrypt */
+                                    session_key, sizeof(session_key),                      /* AES key to use */
+                                    IV, sizeof(IV),                        /* Initialization vector */
+                                    Computed_Plaintext, &computed_size);   /* Data buffer to receive generated plaintext */
+
+                for (int i = 0; i < sizeof(Computed_Plaintext); i++) {
+                    printf("Computed_Plaintext[%d] = 0x%02X\n", i, Computed_Plaintext[i]);
+                }
+
+                //验证MAC值是否正确
+                retval = cmox_mac_verify(CMOX_KMAC_128_ALGO,                             /* Use KMAC 128 algorithm */
+                                         Computed_Plaintext, sizeof(Computed_Plaintext), /* Message to authenticate */
+                                         KMAC_Key, sizeof(KMAC_Key),                     /* KMAC Key to use */
+                                         Custom_Data, sizeof(Custom_Data),               /* Custom data */
+                                         mac_array,                                      /* Authentication tag */
+                                         sizeof(mac_array));                             /* tag size */
+                                       
+                 printf("retval:%02x",retval);
+
+
+                if(retval == CMOX_MAC_AUTH_SUCCESS)
+                {
+                    HAL_GPIO_WritePin(GPIOB,LED0_GPIO_PIN, GPIO_PIN_SET);
+                    HAL_Delay(500);
+                }
+                IRQflag = 0;
+                
+            }
+            
+
+        }
+
+        delay_ms(200); // 每2秒发送一轮
+    }
+
 }
 
 
@@ -324,21 +338,31 @@ void SystemClock_Config(void)
 }
 
 
+
 /**
-  * @brief  This function is executed in case of error occurrence
-  * @param  None
-  * @retval None
-  */
-static void Error_Handler(void)
-{
-  /* User may add here some code to deal with this error */
-  /* Toggle LED4 @2Hz to notify error condition */
-  while (1)
-  {
-//    BSP_LED_Toggle(LED4);
-    HAL_Delay(250);
-  }
-}
+ * @brief 接收并验证安全报文
+ */
+//int receive_and_verify_secure_packet(const uint8_t *packet, uint8_t *decrypted_payload) {
+//    
+
+//    // 1. 验证MAC。使用接收到的IV和密文，用同样的密钥重新计算MAC，并与接收到的MAC比较
+//    if (cmox_mac_verify(CMOX_KMAC_128_ALGO, (uint8_t*)packet, IV_LEN + PLAINTEXT_LEN,
+//                        session_key, sizeof(session_key), NULL, 0,
+//                        received_tag, MAC_LEN) != CMOX_MAC_SUCCESS) {
+//        return -1; // MAC验证失败
+//    }
+
+//    // 2. MAC验证成功后，解密数据
+//    if (cmox_cipher_decrypt(CMOX_SM4_CTR_DEC_ALGO, ciphertext, PLAINTEXT_LEN,
+//                            session_key, sizeof(session_key), iv, IV_LEN,
+//                            decrypted_payload, &ignored_len) != CMOX_CIPHER_SUCCESS) {
+//        return -2; // 解密失败
+//    }
+
+//    return 0; // 成功
+//}
+
+
 
 #ifdef USE_FULL_ASSERT
 

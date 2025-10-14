@@ -1,5 +1,6 @@
 ..\..\output\main.o: ..\..\User\main.c
 ..\..\output\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+..\..\output\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 ..\..\output\main.o: ..\..\Drivers\./SYSTEM/sys/sys.h
 ..\..\output\main.o: ..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include\stm32f1xx.h
 ..\..\output\main.o: ..\..\Drivers\CMSIS\Device\ST\STM32F1xx\Include\stm32f103xe.h
@@ -66,7 +67,6 @@
 ..\..\output\main.o: ..\..\Middlewares\./USMART/usmart_port.h
 ..\..\output\main.o: ..\..\Drivers\./BSP/LED/led.h
 ..\..\output\main.o: ..\..\Drivers\./BSP/LCD/lcd.h
-..\..\output\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 ..\..\output\main.o: ..\..\Drivers\./BSP/KEY/key.h
 ..\..\output\main.o: ..\..\Drivers\./BSP/CAN/can.h
 ..\..\output\main.o: ..\..\Drivers\./BSP/CAN/can_config.h

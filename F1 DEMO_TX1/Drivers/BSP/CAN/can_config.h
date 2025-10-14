@@ -57,4 +57,22 @@
 #define ERROR_MSG_VALIDATION    0xE1  // 消息验证错误
 
 
+// ========== 配置当前ECU的身份 ==========
+// 将 MY_ECU_ID 设置为 1, 2, 3, 或 4
+#define MY_ECU_ID                   1
+
+// ========== 配置通信目标ECU ==========
+// 将 TARGET_ECU_ID 设置为 1, 2, 3, 或 4 (不能是 MY_ECU_ID)
+#define TARGET_ECU_ID               2
+// ==========================================================
+
+
+// 定义ECU之间通信的CAN ID基础地址
+#define CAN_ID_ECU_MSG_BASE         0x200
+
+// 根据上面的配置自动生成CAN ID
+#define MY_ECU_RX_CAN_ID            (CAN_ID_ECU_MSG_BASE + MY_ECU_ID)
+#define TARGET_ECU_CAN_ID           (CAN_ID_ECU_MSG_BASE + TARGET_ECU_ID)
+
+
 #endif // __CAN_CONFIG_H

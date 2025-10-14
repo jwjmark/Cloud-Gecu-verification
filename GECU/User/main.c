@@ -112,11 +112,21 @@ int main(void)
     strncpy(Key_4, QRNG_number[Key_flag]+96, 16);
     Key_flag = Key_flag + 96;
     
-    
-    can_send_msg(CAN_ID_KEY_DIST_ECU1,(unsigned char *)Key_1,strlen(Key_1));
-    can_send_msg(CAN_ID_KEY_DIST_ECU2,(unsigned char *)Key_2,strlen(Key_2));
-    can_send_msg(CAN_ID_KEY_DIST_ECU3,(unsigned char *)Key_3,strlen(Key_3));
-    can_send_msg(CAN_ID_KEY_DIST_ECU4,(unsigned char *)Key_4,strlen(Key_4));
+                        send_gateway_status(SYS_STATE_AUTH_DONE);
+                
+                    printf("向各ECU发送对应会话密钥\n");
+                    can_send_msg(CAN_ID_KEY_DIST_ECU1,(unsigned char *)Key_1,strlen(Key_1));
+                    delay_ms(50);
+                    can_send_msg(CAN_ID_KEY_DIST_ECU2,(unsigned char *)Key_1,strlen(Key_1));
+                    delay_ms(50);
+                    can_send_msg(CAN_ID_KEY_DIST_ECU3,(unsigned char *)Key_1,strlen(Key_1));
+                    delay_ms(50);
+                    can_send_msg(CAN_ID_KEY_DIST_ECU4,(unsigned char *)Key_1,strlen(Key_1));
+                    delay_ms(50);
+                    
+                    delay_ms(100);
+                    send_gateway_status(SYS_STATE_KEY_READY);
+
 
     
     esp8266_init();
@@ -425,6 +435,7 @@ int main(void)
                     {
                         printf("  ECU authentication SUCCESS.\n");
                         
+
                         printf("  Simulating: Sending ECU会话密钥PQGE (%s) to %s.\n", PQGE, ecu_ids[current_ecu_index]);
 
                         
@@ -444,13 +455,14 @@ int main(void)
                     send_gateway_status(SYS_STATE_AUTH_DONE);
                 
                     printf("向各ECU发送对应会话密钥\n");
-                    delay_ms(100);
-                    
-
                     can_send_msg(CAN_ID_KEY_DIST_ECU1,(unsigned char *)Key_1,strlen(Key_1));
-                    can_send_msg(CAN_ID_KEY_DIST_ECU2,(unsigned char *)Key_2,strlen(Key_2));
-                    can_send_msg(CAN_ID_KEY_DIST_ECU3,(unsigned char *)Key_3,strlen(Key_3));
-                    can_send_msg(CAN_ID_KEY_DIST_ECU4,(unsigned char *)Key_4,strlen(Key_4));
+                    delay_ms(50);
+                    can_send_msg(CAN_ID_KEY_DIST_ECU2,(unsigned char *)Key_1,strlen(Key_1));
+                    delay_ms(50);
+                    can_send_msg(CAN_ID_KEY_DIST_ECU3,(unsigned char *)Key_1,strlen(Key_1));
+                    delay_ms(50);
+                    can_send_msg(CAN_ID_KEY_DIST_ECU4,(unsigned char *)Key_1,strlen(Key_1));
+                    delay_ms(50);
                     
                     delay_ms(100);
                     send_gateway_status(SYS_STATE_KEY_READY);
