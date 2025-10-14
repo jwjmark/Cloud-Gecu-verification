@@ -244,7 +244,7 @@ uint8_t esp8266_receive_msg(void)
 
 	if(strstr((const char*)receive_buf,"+MQTTSUBRECV:") != NULL)
 	{
-        printf("\%s\n",receive_buf);
+        printf("**************************************************************** \n GECU Send 2 VCS: \%s **************************************************************** \n",receive_buf);
         
 		int msg_len;
         char topic[32]; // 假设 topic 长度不超过 32 字符
@@ -271,41 +271,7 @@ uint8_t esp8266_receive_msg(void)
 		}
         
 	}
-        
-    /**********使用sm4.c文件进行解密操作，先留着看看********************/
-//    // 解密出分发的密钥
-//    printf("OK\n");
-//    // 开始解密,解出分发的密钥
-//    sm4_context My_sm4_context;
-//	// unsigned char EV_key[16];
-//	unsigned char KEY[16] = "1234567890abcdef";
-//    sm4_setkey_dec(&My_sm4_context, KEY);
-//    int refer_buf_len = strlen(kdic->valuestring);
-//    unsigned char input_buf[500] = { 0 };
-//    unsigned char decryped_KEY[500] = { 0 };
-//    memset(input_buf, '\0', sizeof(input_buf));
-//    memset(decryped_KEY, '\0', sizeof(decryped_KEY));
-//    StringToByte(kdic->valuestring,input_buf,refer_buf_len);
-//    sm4_crypt_ecb(&My_sm4_context,SM4_DECRYPT, refer_buf_len/2, input_buf, decryped_KEY);
-//    printf("\nCS_decryped_KEY data: %s\n len : %d \n",decryped_KEY,(int)strlen(decryped_KEY));		
-	
 
-//    // 开始构建回复的信息
-//    cJSON *root = NULL;
-
-//    /* Our "Video" datatype: */
-//    root = cJSON_CreateObject();
-
-
-//    cJSON_AddStringToObject(root, "CID", "cs001");
-//    cJSON_AddStringToObject(root, "KDIV", kdiv->valuestring);
-//    cJSON_AddStringToObject(root, "timestap", timestap->valuestring);
-//    cJSON_AddStringToObject(root, "dig2ev", dig2ev->valuestring);
-
-//    out_jsonStr = cJSON_PrintUnformatted(root);	
-//		
-//		
-//	}
     else 
     {
 		retval = 1;
@@ -324,34 +290,34 @@ void esp8266_init(void)
 	
 	printf("1.RESET ESP8266\r\n");	
 	HAL_UART_Transmit(&g_uart3_handle, (unsigned char *)"AT+RST\r\n",8, 1000);                  //esp8266初始化
-	delay_ms(4000);
+	delay_ms(20);
 	uart3_receiver_clear(receive_count);
 	
 	printf("2.SETTING STATION MODE\r\n");
 	while(esp8266_send_cmd((uint8_t *)"AT+CWMODE=1\r\n",strlen("AT+CWMODE=1\r\n"),"OK")!=0)
 	{
-		delay_ms(2000); 
+		delay_ms(20); 
 	}	
 
 	printf("3.NO AUTO CONNECT WIFI\r\n"); 
 	while(esp8266_send_cmd((uint8_t *)"AT+CWAUTOCONN=0\r\n",strlen("AT+CWAUTOCONN=0\r\n"),"OK")!=0)
 	{
-		delay_ms(1000); 
+		delay_ms(20); 
 	}
 
     
 	printf("4.CONFIG WIFI NETWORK\r\n");
 	while(esp8266_config_network() != 0)
 	{
-		delay_ms(1000); 
+		delay_ms(20); 
 	}
-	delay_ms(1000);
+	delay_ms(20);
     
     
 	printf("5.CONFIG TIME\r\n");
 	while(esp8266_send_cmd((uint8_t *)"AT+CIPSNTPCFG=1,8,\"cn.ntp.org.cn\",\"ntp.sjtu.edu.cn\"\r\n",strlen("AT+CIPSNTPCFG=1,8,\"cn.ntp.org.cn\",\"ntp.sjtu.edu.cn\"\r\n"),"OK")!=0)
 	{
-		delay_ms(1000); 
+		delay_ms(20); 
 	}
 //	delay_ms(2000);
     
@@ -359,24 +325,23 @@ void esp8266_init(void)
 	while(esp8266_send_cmd((uint8_t *)"AT+MQTTUSERCFG=0,1,\""MQTT_CLIENT_ID"\",\""MQTT_USER_NAME"\",\""MQTT_PASSWD"\",0,0,\"\"\r\n",
                           strlen("AT+MQTTUSERCFG=0,1,\""MQTT_CLIENT_ID"\",\""MQTT_USER_NAME"\",\""MQTT_PASSWD"\",0,0,\"\"\r\n"),"OK")!=0)
 	{
-		delay_ms(1000);
+		delay_ms(20);
 	}
     
 	printf("7.CONNECT MQTT BROKER\r\n");
 	while(esp8266_connect_server() != 0)
 	{
-		delay_ms(5000);
+		delay_ms(20);
         
 	}
     
 	printf("8.SUBSCRIBE TOPIC\r\n");
 	while(esp8266_send_cmd((uint8_t *)"AT+MQTTSUB=0,\""SUB_TOPIC"\",0\r\n",strlen("AT+MQTTSUB=0,\""SUB_TOPIC"\",0\r\n"),"OK")!=0)
 	{
-		delay_ms(2000);
+		delay_ms(20);
 	}
 	printf("9.ESP8266 INIT OK!!!\r\n");
-//	printf("9.ESP8266 INIT OK!!!\r\n");
-//  OLED_printf(0,0,"9.ESP8266 INIT OK!!!                ");
+
 }
 
 char* add_escape_characters(const char* json_str) 

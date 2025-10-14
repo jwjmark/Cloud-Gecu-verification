@@ -20,10 +20,12 @@
 
 // --- 状态机定义 ---
 typedef enum {
-    STATE_GECU_VCS_HANDSHAKE,
-    STATE_GECU_VCS_AUTH_SUCCESS,
-    STATE_ECU_AUTH_START,
-    STATE_ECU_AUTH_PENDING
+    STATE_GECU_VCS_HANDSHAKE,      // GECU与VCS握手阶段，等待第一次响应
+    STATE_GECU_VCS_VERIFY,         // GECU与VCS握手阶段，等待第二次响应
+    STATE_ECU_AUTH_START,          // 开始对ECU进行认证
+    STATE_ECU_AUTH_PENDING,        // 等待对当前ECU认证的响应
+    STATE_ALL_ECUS_AUTH_SUCCESS,   // 所有ECU认证成功
+    STATE_AUTH_FAILED              // 认证失败
 } AuthState;
 
 // --- 声明全局变量 ---
