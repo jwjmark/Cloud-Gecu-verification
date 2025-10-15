@@ -26,6 +26,9 @@
 // 配置文件信息
 static cJSON *configjson;
 
+// 用于存储会话中从GECU收到的动态QGC
+char session_qgc[33] = {0};
+
 int ECU_flag = 0; // 标志位，标志是否已经认证通过
 
 char* ADDRESS = NULL;
@@ -227,7 +230,7 @@ void AuthMsg_callback1_GECU2VCS(char* msg){
     // 开始构建回复的信息(生成随机数QCG，发送{PGID，QCG，MAC})******************挑战应答***********************
 
     // 生成3s的延时
-    sleep(5); 
+    sleep(3); 
 
      // 动态随机生成QCG
     
@@ -346,6 +349,11 @@ void AuthMsg_callback2_GECU2VCS(char* msg){
         return ;
     }
 
+        if (cJSON_IsString(QGC) && QGC->valuestring != NULL) {
+        strncpy(session_qgc, QGC->valuestring, sizeof(session_qgc) - 1);
+        printf("  会话QGC已存储: %s\n", session_qgc);
+    }
+
         // 生成3s的延时
     sleep(3);
 
@@ -408,6 +416,20 @@ void AuthMsg_callback2_GECU2VCS(char* msg){
 
     // 释放内存
     cJSON_Delete(json);
+
+    // sleep(3);
+
+    // pubmsg.payload = "1111111111";
+    // pubmsg.payloadlen = strlen("1111111111");
+    // pubmsg.qos = QOS;
+    // pubmsg.retained = 0;
+    // MQTTClient_publishMessage(client, "innetwork/vcs2gecu", &pubmsg, &token);
+    // printf("Waiting for publication of %s\n"
+    //        "on topic %s for client with ClientID: %s\n",
+    //        (char *)pubmsg.payload, "v2g/vcs2gecu", CLIENTID);
+    // MQTTClient_waitForCompletion(client, token, TIMEOUT);
+
+
     receiveflag++;
 }
 
@@ -449,28 +471,32 @@ void AuthMsg_callback3_GECU2VCS(char* msg){
     hex_to_bytes(m3_bytes, M3->valuestring, 16);
     cJSON *PQCG_json = cJSON_GetObjectItem(configjson, "PQCG");
     hex_to_bytes(pqcg_bytes, PQCG_json->valuestring, 16);
+    printf("  Received M3:         %s\n", M3->valuestring);
+    printf("  PQCG from config:    %s\n", PQCG_json->valuestring);
 
-    // 修正 BUG #1: 循环边界应为16
     for(int i = 0; i < 16; i++) {
         recovered_heidi_bytes_part[i] = m3_bytes[i] ^ pqcg_bytes[i];
     }
     
-    // 修正 BUG #2: 转换长度应为16
     bytes_to_hex(recovered_heidi_hex_part, recovered_heidi_bytes_part, 16);
     printf("  Recovered H(EIDi) Part (16 bytes): %s\n", recovered_heidi_hex_part);
 
 
     // 3. 修正: 使用字节级异或验证 C1
-    unsigned char c1_bytes[16];
-    unsigned char pqge_bytes[16];
+    unsigned char qgc_bytes[16];
     unsigned char calculated_c1_bytes[16];
     char calculated_c1_hex[33] = {0};
     
-    cJSON *PQGE_json = cJSON_GetObjectItem(configjson, "PQGE"); // 从配置中获取PQGE
-    hex_to_bytes(pqge_bytes, PQGE_json->valuestring, 16);
+    // 修正 #3: 使用存储的会话QGC，而不是从配置文件读取
+    if (strlen(session_qgc) == 0) {
+        printf("  [错误]: 未能获取到会话QGC, 无法验证C1.\n");
+        cJSON_Delete(json);
+        return;
+    }
+    hex_to_bytes(qgc_bytes, session_qgc, 16);
 
     for(int i = 0; i < 16; i++) {
-        calculated_c1_bytes[i] = recovered_heidi_bytes_part[i] ^ pqge_bytes[i];
+        calculated_c1_bytes[i] = recovered_heidi_bytes_part[i] ^ qgc_bytes[i];
     }
     bytes_to_hex(calculated_c1_hex, calculated_c1_bytes, 16);
 
@@ -485,6 +511,7 @@ void AuthMsg_callback3_GECU2VCS(char* msg){
     }
     else
     {
+        ECU_flag ++;
         printf("  C1 verification SUCCESS. ECU is authentic.\n");
     }
 // 4. 构建并发送成功响应
@@ -508,7 +535,7 @@ void AuthMsg_callback3_GECU2VCS(char* msg){
     cJSON_AddStringToObject(root, "status", status_msg);
     cJSON_AddStringToObject(root, "MAC", MAC_response);
 
-    sleep(1);
+    sleep(3);
 
     char *out_jsonStr = cJSON_PrintUnformatted(root);
 
@@ -527,6 +554,12 @@ void AuthMsg_callback3_GECU2VCS(char* msg){
     cJSON_Delete(root);
     cJSON_Delete(json);
     receiveflag++;
+    if(ECU_flag < 5){
+        printf("  ECU认证成功，当前已认证通过的ECU数量: %d\n", ECU_flag);
+    }
+    else{
+        printf("  ECU认证失败，当前已认证通过的ECU数量: %d\n", ECU_flag);
+    }
 }
 
 void read_json_file(const char *filename) {
