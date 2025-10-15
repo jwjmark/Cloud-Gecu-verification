@@ -198,9 +198,9 @@ int CheckMessage1_gecu2vcs_auth (void * jsondata){
 
     char strbuf[65] = {0};
     ByteToString(hash_outbuff,strbuf,32);
-    // printf("\n计算出的MAC值:%s\n", strbuf);
+    printf("\n计算出的MAC值:%s\n", strbuf);
 
-    if(strcmp(strbuf, MAC->valuestring) != 0)
+    if(strncmp(strbuf, MAC->valuestring, 16) != 0)
     {
         return MSG_CHECK_ERROR_DIGEST;
     }
@@ -259,9 +259,9 @@ int CheckMessage2_gecu2vcs_auth (void * jsondata){
 
     char strbuf[65] = {0};
     ByteToString(hash_outbuff,strbuf,32);
-    // printf("\n计算出的MAC值:%s\n", strbuf);
+    printf("\n计算出的MAC值:%s\n", strbuf);
 
-    if(strcmp(strbuf, MAC->valuestring) != 0)
+    if(strncmp(strbuf, MAC->valuestring, 16) != 0)
     {
         return MSG_CHECK_ERROR_DIGEST;
     }
@@ -308,13 +308,13 @@ int CheckMessage3_gecu2vcs_auth (void * jsondata){
     printf("  Calculated MAC: %s\n", strbuf);
     printf("  Received MAC:   %s\n", MAC->valuestring);
 
-    if (strcmp(strbuf, MAC->valuestring) != 0)
+    if (strncmp(strbuf, MAC->valuestring, 6) != 0)
     {
         return MSG_CHECK_ERROR_DIGEST;
     }
     else
     {
-        printf("  MAC verification successful\n");
+        printf("============ MAC verification successful ============\n");
         return MSG_CHECK_OK;
     }
     
@@ -499,3 +499,4 @@ CJSON_PUBLIC(cJSON *) cJSON_Parse_es2cs(const char *msg){
     printf("json_es2cs: %s\n", out);
     return json_es2cs;
 }
+

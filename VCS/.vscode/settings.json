@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "typeinfo": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "messagecheck.h": "c"
     }
 }
