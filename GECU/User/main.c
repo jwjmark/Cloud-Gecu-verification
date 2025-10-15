@@ -112,20 +112,20 @@ int main(void)
     strncpy(Key_4, QRNG_number[Key_flag]+96, 16);
     Key_flag = Key_flag + 96;
     
-                        send_gateway_status(SYS_STATE_AUTH_DONE);
-                
-                    printf("向各ECU发送对应会话密钥\n");
-                    can_send_msg(CAN_ID_KEY_DIST_ECU1,(unsigned char *)Key_1,strlen(Key_1));
-                    delay_ms(50);
-                    can_send_msg(CAN_ID_KEY_DIST_ECU2,(unsigned char *)Key_1,strlen(Key_1));
-                    delay_ms(50);
-                    can_send_msg(CAN_ID_KEY_DIST_ECU3,(unsigned char *)Key_1,strlen(Key_1));
-                    delay_ms(50);
-                    can_send_msg(CAN_ID_KEY_DIST_ECU4,(unsigned char *)Key_1,strlen(Key_1));
-                    delay_ms(50);
-                    
-                    delay_ms(100);
-                    send_gateway_status(SYS_STATE_KEY_READY);
+//                        send_gateway_status(SYS_STATE_AUTH_DONE);
+//                
+//                    printf("向各ECU发送对应会话密钥\n");
+//                    can_send_msg(CAN_ID_KEY_DIST_ECU1,(unsigned char *)Key_1,strlen(Key_1));
+//                    delay_ms(50);
+//                    can_send_msg(CAN_ID_KEY_DIST_ECU2,(unsigned char *)Key_1,strlen(Key_1));
+//                    delay_ms(50);
+//                    can_send_msg(CAN_ID_KEY_DIST_ECU3,(unsigned char *)Key_1,strlen(Key_1));
+//                    delay_ms(50);
+//                    can_send_msg(CAN_ID_KEY_DIST_ECU4,(unsigned char *)Key_1,strlen(Key_1));
+//                    delay_ms(50);
+//                    
+//                    delay_ms(100);
+//                    send_gateway_status(SYS_STATE_KEY_READY);
 
 
     
@@ -225,6 +225,7 @@ int main(void)
     escaped_out1 = add_escape_characters(out);
     printf("\n");
     esp8266_send_msg();
+    delay_ms(200);
 
 //    free(root1);
 
@@ -400,6 +401,7 @@ int main(void)
                         
                         printf("\n\n ==================== Authenticating ECU #%d: %s ==================== \n", current_ecu_index + 1, ecu_ids[current_ecu_index]);
                         send_ecu_auth_request(ecu_ids[current_ecu_index], (char*)QGC);
+                        
 //                        g_auth_state = STATE_ECU_AUTH_PENDING; // 等待VCS对ECU认证请求的响应
                     }
                     else
@@ -599,6 +601,7 @@ void send_ecu_auth_request(const char* eid, const char* qgc)
     if (mac_result != NULL) {
 
         strncpy(MAC, mac_result, 64);
+        MAC[64] = '\0';  // 确保字符串以 '\0' 结束   
 
     }
 
@@ -618,6 +621,7 @@ void send_ecu_auth_request(const char* eid, const char* qgc)
     out = cJSON_PrintUnformatted(root_ecu_auth);
     escaped_out1 = add_escape_characters(out);
 //    printf("  Sending to VCS: %s\n", out);
+    delay_ms(200);
 
     esp8266_send_msg();
 

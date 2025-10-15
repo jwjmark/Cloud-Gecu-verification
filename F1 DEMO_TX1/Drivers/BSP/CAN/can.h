@@ -58,7 +58,7 @@ typedef enum {
 #define CAN_RX0_INT_ENABLE      0               /* 0,不使能; 1,使能; */
 
 /* 函数声明 */
-uint8_t can_receive_msg(uint32_t id, uint8_t *buf);             /* CAN接收数据, 查询 */
+uint8_t can_receive_msg( uint8_t *buf);             /* CAN接收数据, 查询 */
 uint8_t can_send_msg(uint32_t id, uint8_t *msg, uint8_t len);   /* CAN发送数据 */
 uint8_t can_init(uint32_t tsjw,uint32_t tbs2,uint32_t tbs1,uint16_t brp,uint32_t mode); /* CAN初始化 */
 char* ProcessData(uint8_t* data, uint16_t length);

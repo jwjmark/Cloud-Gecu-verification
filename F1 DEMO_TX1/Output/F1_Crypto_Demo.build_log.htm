@@ -27,36 +27,7 @@ Project File Date:  12/19/2024
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 7 (build 960)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'F1_Crypto_Demo'
-compiling main.c...
-..\..\User\main.c(221): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "const char *"
-                  cJSON *receivedJson = cJSON_Parse(data_buffer);  // 解析接收到的JSON字符串
-..\..\User\main.c(97): warning:  #177-D: variable "cipher_ctx"  was declared but never referenced
-    cmox_cipher_handle_t *cipher_ctx;
-..\..\User\main.c(99): warning:  #177-D: variable "index"  was declared but never referenced
-    uint32_t index;
-..\..\User\main.c(103): warning:  #177-D: variable "i"  was declared but never referenced
-      uint8_t i = 0, t = 0;
-..\..\User\main.c(103): warning:  #177-D: variable "t"  was declared but never referenced
-      uint8_t i = 0, t = 0;
-..\..\User\main.c(105): warning:  #177-D: variable "cnt"  was declared but never referenced
-      int cnt = 0;
-..\..\User\main.c(106): warning:  #177-D: variable "rxbuf"  was declared but never referenced
-      uint8_t rxbuf[8]={1,1,1,1,1,1,1,1};
-..\..\User\main.c(107): warning:  #177-D: variable "rxlen"  was declared but never referenced
-      uint8_t rxlen = 0;
-..\..\User\main.c(108): warning:  #550-D: variable "res"  was set but never used
-      uint8_t res = 0;
-..\..\User\main.c(109): warning:  #177-D: variable "mode"  was declared but never referenced
-      uint8_t mode = 0; /* CAN工作模式: 0,普通模式; 1,环回模式 */
-..\..\User\main.c(149): warning:  #177-D: variable "decrypted_payload"  was declared but never referenced
-      uint8_t decrypted_payload[PLAINTEXT_LEN];
-..\..\User\main.c(310): warning:  #177-D: function "SystemClock_Config"  was declared but never referenced
-  void SystemClock_Config(void)
-..\..\User\main.c: 12 warnings, 0 errors
-linking...
-Program Size: Code=46144 RO-data=1688 RW-data=436 ZI-data=3484  
-FromELF: creating hex file...
-"..\..\Output\F1_Crypto_Demo.axf" - 0 Error(s), 12 Warning(s).
+"..\..\Output\F1_Crypto_Demo.axf" - 0 Error(s), 0 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -69,7 +40,7 @@ Package Vendor: Keil
   C:\Users\40827\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include
 
 <h2>Collection of Component Files used:</h2>
-Build Time Elapsed:  00:00:03
+Build Time Elapsed:  00:00:01
 </pre>
 </body>
 </html>
