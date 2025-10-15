@@ -6,10 +6,6 @@
 
 
 
-#define GID "gecu001"
-#define PW "0123456789abcdef"
-#define PQCG "fedcba9876543210"
-
 extern char *out;
 extern char PGID[65];
 extern int esp_rxflag ;

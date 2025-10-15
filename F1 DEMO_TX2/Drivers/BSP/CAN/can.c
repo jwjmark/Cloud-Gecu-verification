@@ -1,0 +1,421 @@
+#include <string.h>
+#include <stdlib.h>
+#include "./BSP/CAN/can.h"
+#include "./BSP/CAN/can_config.h"
+#include "./BSP/LED/led.h"
+#include "./SYSTEM/delay/delay.h"
+#include "./SYSTEM/usart/usart.h"
+
+
+#define MAX_CAN_FRAME_SIZE 8  // 单个CAN帧最大数据长度为8字节
+#define MAX_DATA_BUFFER_SIZE 512  // 假设最大数据长度为64字节
+#define SINGLE_FRAME 0x31     // 单帧标识
+#define START_FRAME 0x10      // 启动帧标识
+#define DATA_FRAME 0x21       // 数据帧标识
+#define END_FRAME 0x22        // 结束帧标识
+
+extern volatile EcuState g_ecu_state;
+extern uint8_t session_key[32];
+
+
+uint8_t data_buffer[MAX_DATA_BUFFER_SIZE];  // 数据缓冲区
+uint16_t buffer_index = 0;                 // 当前数据写入位置
+volatile uint8_t IRQflag = 0;                     // 接收状态标志
+uint32_t rx_id = CAN_ID_GATEWAY_STATUS;
+
+
+CAN_HandleTypeDef   g_canx_handler;     /* CANx句柄 */
+CAN_TxHeaderTypeDef g_canx_txheader;    /* 发送参数句柄 */
+CAN_RxHeaderTypeDef g_canx_rxheader;    /* 接收参数句柄 */
+
+/**
+ * @brief       CAN初始化
+ * @param       tsjw    : 重新同步跳跃时间单元.范围: 1~3;
+ * @param       tbs2    : 时间段2的时间单元.范围: 1~8;
+ * @param       tbs1    : 时间段1的时间单元.范围: 1~16;
+ * @param       brp     : 波特率分频器.范围: 1~1024;
+ *   @note      以上4个参数, 在函数内部会减1, 所以, 任何一个参数都不能等于0
+ *              CAN挂在APB1上面, 其输入时钟频率为 Fpclk1 = PCLK1 = 36Mhz
+ *              tq     = brp * tpclk1;
+ *              波特率 = Fpclk1 / ((tbs1 + tbs2 + 1) * brp);
+ *              我们设置 can_init(1, 8, 9, 4, 1), 则CAN波特率为:
+ *              36M / ((8 + 9 + 1) * 4) = 500Kbps
+ *
+ * @param       mode    : CAN_MODE_NORMAL,  普通模式;
+                          CAN_MODE_LOOPBACK,回环模式;
+ * @retval      0,  初始化成功; 其他, 初始化失败;
+ */
+uint8_t can_init(uint32_t tsjw, uint32_t tbs2, uint32_t tbs1, uint16_t brp, uint32_t mode)
+{
+  g_canx_handler.Instance = CAN1;
+  g_canx_handler.Init.Prescaler = brp;                /* 分频系数(Fdiv)为brp+1 */
+  g_canx_handler.Init.Mode = mode;                    /* 模式设置 */
+  g_canx_handler.Init.SyncJumpWidth = tsjw;           /* 重新同步跳跃宽度(Tsjw)为tsjw+1个时间单位 CAN_SJW_1TQ~CAN_SJW_4TQ */
+  g_canx_handler.Init.TimeSeg1 = tbs1;                /* tbs1范围CAN_BS1_1TQ~CAN_BS1_16TQ */
+  g_canx_handler.Init.TimeSeg2 = tbs2;                /* tbs2范围CAN_BS2_1TQ~CAN_BS2_8TQ */
+  g_canx_handler.Init.TimeTriggeredMode = DISABLE;    /* 非时间触发通信模式 */
+  g_canx_handler.Init.AutoBusOff = DISABLE;           /* 软件自动离线管理 */
+  g_canx_handler.Init.AutoWakeUp = DISABLE;           /* 睡眠模式通过软件唤醒(清除CAN->MCR的SLEEP位) */
+  g_canx_handler.Init.AutoRetransmission = ENABLE;    /* 禁止报文自动传送 */
+  g_canx_handler.Init.ReceiveFifoLocked = DISABLE;    /* 报文不锁定,新的覆盖旧的 */
+  g_canx_handler.Init.TransmitFifoPriority = DISABLE; /* 优先级由报文标识符决定 */
+  if (HAL_CAN_Init(&g_canx_handler) != HAL_OK)        //HAL_CAN_Init初始化CAN参数，同时中包含了HAL_CAN_MspInit用以初始化CAN底层
+  {
+    return 1;
+  }
+
+#if CAN_RX0_INT_ENABLE
+
+  /* 使用中断接收 */
+  __HAL_CAN_ENABLE_IT(&g_canx_handler, CAN_IT_RX_FIFO0_MSG_PENDING); /* FIFO0消息挂号中断允许 */
+  HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);                          /* 使能CAN中断 */
+  HAL_NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, 1, 0);                  /* 抢占优先级1，子优先级0 */
+#endif
+
+  CAN_FilterTypeDef sFilterConfig;
+
+  /*配置CAN过滤器*/
+  sFilterConfig.FilterBank = 0;                             /* 过滤器0 */
+  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;         
+  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+  sFilterConfig.FilterIdHigh = 0x0000;                      /* 32位ID */
+  sFilterConfig.FilterIdLow = 0x0000;
+  sFilterConfig.FilterMaskIdHigh = 0x0000;                  /* 32位MASK */
+  sFilterConfig.FilterMaskIdLow = 0x0000;
+  sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO0;    /* 过滤器0关联到FIFO0 */
+  sFilterConfig.FilterActivation = CAN_FILTER_ENABLE;       /* 激活滤波器0 */
+  sFilterConfig.SlaveStartFilterBank = 14;
+
+  /* 过滤器配置 */
+  if (HAL_CAN_ConfigFilter(&g_canx_handler, &sFilterConfig) != HAL_OK)
+  {
+    return 2;
+  }
+
+  /* 启动CAN外围设备 */
+  if (HAL_CAN_Start(&g_canx_handler) != HAL_OK)
+  {
+    return 3;
+  }
+
+
+  return 0;
+}
+
+/**
+ * @brief       CAN底层驱动，引脚配置，时钟配置，中断配置
+                此函数会被HAL_CAN_Init()调用
+ * @param       hcan:CAN句柄
+ * @retval      无
+ */
+void HAL_CAN_MspInit(CAN_HandleTypeDef *hcan)
+{
+  if (CAN1 == hcan->Instance)
+  {
+    CAN_RX_GPIO_CLK_ENABLE();       /* CAN_RX脚时钟使能 */
+    CAN_TX_GPIO_CLK_ENABLE();       /* CAN_TX脚时钟使能 */
+    __HAL_RCC_CAN1_CLK_ENABLE();    /* 使能CAN1时钟 */
+
+    GPIO_InitTypeDef gpio_initure;
+
+    gpio_initure.Pin = CAN_TX_GPIO_PIN;
+    gpio_initure.Mode = GPIO_MODE_AF_PP;
+    gpio_initure.Pull = GPIO_PULLUP;
+    gpio_initure.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(CAN_TX_GPIO_PORT, &gpio_initure); /* CAN_TX脚 模式设置 */
+
+    gpio_initure.Pin = CAN_RX_GPIO_PIN;
+    gpio_initure.Mode = GPIO_MODE_AF_INPUT;
+    HAL_GPIO_Init(CAN_RX_GPIO_PORT, &gpio_initure); /* CAN_RX脚 必须设置成输入模式 */
+  }
+}
+
+#if CAN_RX0_INT_ENABLE /* 使能RX0中断 */
+
+/**
+ * @brief       CAN RX0 中断服务函数
+ *   @note      处理CAN FIFO0的接收中断
+ * @param       无
+ * @retval      无
+ */
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+    
+    IRQflag = 0;
+
+    uint8_t rxbuf[8];
+    uint32_t id = 0x104;
+    can_receive_msg(id, rxbuf);
+    printf("id %x\n", id);
+    printf("\n 111111111111111111111111111111 \n");
+
+    uint8_t frame_type = rxbuf[0];  // 提取帧类型标识符
+    uint8_t* frame_data = &rxbuf[1]; // 提取数据部分
+
+    static uint8_t data_len =  7 ;    // 数据长度（去掉标识符）
+    printf("data_len = %d \n",data_len);
+       switch (frame_type) {
+            case SINGLE_FRAME:
+                // 单帧直接处理
+                memcpy(data_buffer, frame_data, data_len);
+                buffer_index = data_len;
+                IRQflag = 1;  // 结束接收
+                printf("IRQflag标志位为：%d:",IRQflag);
+                ProcessData(data_buffer, buffer_index);  // 调用数据处理函数
+                printf("单帧接收");
+                break;
+
+            case START_FRAME:
+                // 启动帧，初始化缓冲区
+                memset(data_buffer, 0, MAX_DATA_BUFFER_SIZE);
+                buffer_index = 0;
+                memcpy(&data_buffer[buffer_index], frame_data, data_len);
+                buffer_index += data_len;
+                IRQflag = 0;  // 开始接收多帧
+                printf("启动帧接收");
+                break;
+
+            case DATA_FRAME:
+                // 数据帧，累加到缓冲区
+                if (buffer_index + data_len <= MAX_DATA_BUFFER_SIZE) {
+                    memcpy(&data_buffer[buffer_index], frame_data, data_len);
+                    buffer_index += data_len;
+                    printf("数据帧接收");
+                }
+                break;
+
+            case END_FRAME:
+                // 结束帧，完成接收
+                if (buffer_index + data_len <= MAX_DATA_BUFFER_SIZE) {
+                    memcpy(&data_buffer[buffer_index], frame_data, data_len);
+                    for (int i = 0; i < 22; i++) {
+                    printf("data_buffer[%d] = 0x%02X\n", i, data_buffer[i]);
+                    }
+                    buffer_index += data_len;
+                    IRQflag = 1;  // 结束接收
+                    printf("IRQflag标志位为：%d:\n",IRQflag);
+                    printf("结束帧接收\n");
+                }
+                break;
+
+            default:
+                // 未知帧类型，忽略
+                break;
+        }
+    
+}
+
+#endif
+
+/**
+ * @brief       处理接收到的整合数据(自行添加的处理函数)
+ * @note        该函数在接收到完整的多帧CAN消息后调用，
+ *              将剔除标识符后的数据整合并输出。
+ * @param       data    : 指向接收到的数据缓冲区的指针
+ * @param       length  : 数据长度（字节数）
+ * @retval      无
+ */
+char* ProcessData(uint8_t* data, uint16_t length) {
+    
+    printf("Received data (%d bytes):\n", length);
+    for (uint16_t i = 0; i < length; i++) {
+        printf("%02X", data[i]);
+    }
+
+    char str_received[sizeof(data) * 2 + 1];  // 2 characters per byte + null terminator
+    for (int i = 0; i < sizeof(data); i++) 
+    {
+        sprintf(&str_received[i * 2], "%02x", data[i]);
+    }
+    str_received[sizeof(data) * 2] = '\0';  // Null-terminate the string
+
+    return str_received;  // 返回字符串指针
+
+}
+
+
+/**
+ * @brief       CAN 发送一组数据
+ *   @note      发送格式固定为: 标准ID, 数据帧
+ * @param       id      : 标准ID(11位)
+ * @retval      发送状态 0, 成功; 1, 失败;
+ */
+uint8_t can_send_msg(uint32_t id, uint8_t *msg, uint8_t len)
+{
+    uint32_t TxMailbox = CAN_TX_MAILBOX0;
+    g_canx_txheader.StdId = id;
+    g_canx_txheader.IDE = CAN_ID_STD;
+    g_canx_txheader.RTR = CAN_RTR_DATA;
+
+    // === 新增逻辑：判断是否为安全ECU消息 ===
+    // 如果是ECU间的安全消息，我们直接发送8字节，不加任何协议头
+    if (id >= CAN_ID_ECU_MSG_BASE && len == 8)
+    {
+        g_canx_txheader.DLC = 8;
+        if (HAL_CAN_AddTxMessage(&g_canx_handler, &g_canx_txheader, msg, &TxMailbox) != HAL_OK)
+        {
+            return 1; // 发送失败
+        }
+        while (HAL_CAN_GetTxMailboxesFreeLevel(&g_canx_handler) != 3); // 等待发送完成
+        return 0; // 发送成功
+    }
+
+    // === 保留原有的多帧逻辑，用于密钥分发 ===
+    uint8_t TxData[MAX_CAN_FRAME_SIZE];
+    if (len <= 7)
+    {
+        TxData[0] = SINGLE_FRAME;
+        memcpy(&TxData[1], msg, len);
+        g_canx_txheader.DLC = len + 1;
+        if (HAL_CAN_AddTxMessage(&g_canx_handler, &g_canx_txheader, TxData, &TxMailbox) != HAL_OK)
+        {
+            return 1;
+        }
+        while (HAL_CAN_GetTxMailboxesFreeLevel(&g_canx_handler) != 3);
+    }
+    else
+    {
+        uint8_t offset = 0;
+        uint8_t remaining_len = len;
+        uint8_t frame_type = START_FRAME;
+        
+        while (remaining_len > 0)
+        {
+            uint8_t current_frame_len = remaining_len > MAX_CAN_FRAME_SIZE - 1 ? MAX_CAN_FRAME_SIZE - 1 : remaining_len;
+            
+            TxData[0] = frame_type;
+            memcpy(&TxData[1], &msg[offset], current_frame_len);
+            g_canx_txheader.DLC = current_frame_len + 1;
+            
+            if (HAL_CAN_AddTxMessage(&g_canx_handler, &g_canx_txheader, TxData, &TxMailbox) != HAL_OK)
+            {
+                return 1;
+            }
+            
+            while (HAL_CAN_GetTxMailboxesFreeLevel(&g_canx_handler) != 3);
+            
+            offset += current_frame_len;
+            remaining_len -= current_frame_len;
+            
+            if (remaining_len > 0)
+            {
+                frame_type = (remaining_len > (MAX_CAN_FRAME_SIZE - 1)) ? DATA_FRAME : END_FRAME;
+            }
+        }
+    }
+    return 0;
+}
+
+/**
+ * @brief       CAN 接收数据查询
+ *   @note      接收数据格式固定为: 标准ID, 数据帧
+ * @param       id      : 要查询的 标准ID(11位)
+ * @param       buf     : 数据缓存区
+ * @retval      接收结果
+ *   @arg       0   , 无数据被接收到;
+ *   @arg       其他, 接收的数据长度
+ */
+uint8_t can_receive_msg(uint8_t *buf)
+{
+  if (HAL_CAN_GetRxFifoFillLevel(&g_canx_handler, CAN_RX_FIFO0) == 0)     /* 没有接收到数据 */
+  {
+    return 0;
+  }
+
+  if (HAL_CAN_GetRxMessage(&g_canx_handler, CAN_RX_FIFO0, &g_canx_rxheader, buf) != HAL_OK)  /* 读取数据 */
+  {
+    return 0;
+  }
+  
+//  if (g_canx_rxheader.StdId!= id || g_canx_rxheader.IDE != CAN_ID_STD || g_canx_rxheader.RTR != CAN_RTR_DATA)       /* 接收到的ID不对 / 不是标准帧 / 不是数据帧 */
+//  {
+//    return 0;    
+//  }
+
+  return g_canx_rxheader.DLC;
+
+}
+
+/**
+ * @brief 核心函数：处理CAN总线接收到的消息
+ */
+// 将原来的 ecu_handle_can_receive 函数完全替换为以下版本
+void ecu_handle_can_receive(void)
+{
+    uint8_t rxlen = 0;
+    uint8_t rxbuf[8];
+    
+    // 调用修改后的接收函数，它会填充 g_canx_rxheader
+    rxlen = can_receive_msg(rxbuf); 
+
+    if (rxlen > 0)
+    {
+        // 从全局变量 g_canx_rxheader 中获取实际接收到的ID
+        uint32_t received_id = g_canx_rxheader.StdId; 
+        
+        uint8_t frame_type = rxbuf[0];
+        uint8_t* frame_data = &rxbuf[1];
+        // ！！！关键修复：根据实际DLC计算数据长度！！！
+        uint8_t data_len = rxlen - 1; 
+
+        // 根据接收到的ID来决定如何处理数据
+        if (received_id == MY_ECU_KEY_ID)
+        {
+            switch (frame_type) {
+                case START_FRAME:
+                    memset(data_buffer, 0, MAX_DATA_BUFFER_SIZE);
+                    buffer_index = 0;
+                    if (data_len > 0) {
+                        memcpy(&data_buffer[buffer_index], frame_data, data_len);
+                        buffer_index += data_len;
+                    }
+                    IRQflag = 0;
+                    break;
+
+                case DATA_FRAME:
+                    if (buffer_index + data_len <= MAX_DATA_BUFFER_SIZE) {
+                         if (data_len > 0) {
+                           memcpy(&data_buffer[buffer_index], frame_data, data_len);
+                           buffer_index += data_len;
+                        }
+                    }
+                    break;
+
+                case END_FRAME:
+                    if (buffer_index + data_len <= MAX_DATA_BUFFER_SIZE) {
+                        if (data_len > 0) {
+                            memcpy(&data_buffer[buffer_index], frame_data, data_len);
+                            buffer_index += data_len;
+                        }
+                        
+                        printf("Total key length received: %d bytes.\n", buffer_index);
+                        for (int i = 0; i < 16; i++) {
+                            // 只从有效长度内拷贝
+                            if (i < buffer_index) {
+                                session_key[i] = data_buffer[i];
+                            } else {
+                                session_key[i] = 0; // 如果密钥长度不足16，则用0填充
+                            }
+                            printf("session_key[%d] = 0x%02X\n", i, session_key[i]);
+                        }
+                        
+                        g_ecu_state = STATE_SECURE_MODE;
+                        IRQflag = 1;
+                    }
+                    break;
+                
+                default:
+                    // 未知帧类型，重置状态
+                    buffer_index = 0;
+                    IRQflag = 0;
+                    break;
+            }
+        }
+        else if (received_id == MY_ECU_RX_CAN_ID)
+        {
+            memcpy(data_buffer, rxbuf, 8); // 直接拷贝8字节数据
+            IRQflag = 1; // 设置标志位
+            return; // 处理完毕，直接返回
+        }
+    }
+}

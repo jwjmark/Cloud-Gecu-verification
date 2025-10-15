@@ -1,33 +1,8 @@
-/**
- ****************************************************************************************************
- * @file        can.c
- * @author      正点原子团队(ALIENTEK)
- * @version     V1.0
- * @date        2020-04-24
- * @brief       CAN 驱动代码
- * @license     Copyright (c) 2020-2032, 广州市星翼电子科技有限公司
- ****************************************************************************************************
- * @attention
- *
- * 实验平台:正点原子 STM32F103开发板
- * 在线视频:www.yuanzige.com
- * 技术论坛:www.openedv.com
- * 公司网址:www.alientek.com
- * 购买地址:openedv.taobao.com
- *
- * 修改说明
- * V1.0 20210717
- * 修改初始化参数，改用过滤器0关联到FIFO0
- * V1.0 20200424
- * 第一次发布
- *
- ****************************************************************************************************
- */
- 
 #include <string.h>
 #include <stdlib.h>
 #include "ctype.h"
 #include "./BSP/CAN/can.h"
+#include "./BSP/CAN/can_config.h"
 #include "./BSP/LED/led.h"
 #include "./SYSTEM/delay/delay.h"
 #include "./SYSTEM/usart/usart.h"
@@ -345,6 +320,7 @@ uint8_t can_send_msg(uint32_t id, uint8_t *msg, uint8_t len)
             g_canx_txheader.DLC = current_frame_len + 1;
             if (HAL_CAN_AddTxMessage(&g_canx_handler, &g_canx_txheader, TxData, &TxMailbox) != HAL_OK) /* 发送消息 */
             {
+                delay_us(100);
                 return 1;
             }
             
@@ -402,3 +378,18 @@ uint8_t can_receive_msg(uint32_t id, uint8_t *buf)
   return g_canx_rxheader.DLC;
 
 }
+
+
+/**
+ * @brief 发送网关状态广播
+ * @param status_code 系统状态码
+ */
+void send_gateway_status(uint8_t status_code)
+{
+    uint8_t data[1];
+    data[0] = status_code;
+    // 直接调用底层的 can_send_msg, 它会处理单帧逻辑
+    can_send_msg(CAN_ID_GATEWAY_STATUS, data, 1);
+    delay_ms(20);
+}
+

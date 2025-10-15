@@ -70,6 +70,7 @@
   ..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_ll_usb.h \
   ..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pcd_ex.h \
   ..\..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_hcd.h \
-  ..\..\Drivers\.\BSP\LED\led.h ..\..\Drivers\.\SYSTEM\delay\delay.h \
+  ..\..\Drivers\.\BSP\CAN\can_config.h ..\..\Drivers\.\BSP\LED\led.h \
+  ..\..\Drivers\.\SYSTEM\delay\delay.h \
   ..\..\Drivers\.\SYSTEM\usart\usart.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdio.h

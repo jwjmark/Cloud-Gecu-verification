@@ -77,7 +77,7 @@
   ..\..\Drivers\BSP\.\SHA256\sha256.h ..\..\Drivers\BSP\.\CJSON\cJSON.h \
   ..\..\Drivers\BSP\.\BYTE2STRING\byte2string.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\ctype.h \
-  ..\..\Drivers\BSP\.\CAN\can.h \
+  ..\..\Drivers\BSP\.\CAN\can.h ..\..\Drivers\BSP\.\CAN\can_config.h \
   ..\..\Drivers\BSP\.\MESSAGECHECK\messageCheck.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\string.h \
   C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdbool.h \
